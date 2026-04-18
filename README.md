@@ -1,10 +1,12 @@
 # AELibrary
 
-This repository uses Aethelium (.ae) exclusively and no other programming languages.
+**This repository uses Aethelium (.ae) exclusively and no other programming languages.**
 
 AELibrary contains the core Aethelium library source files for building on the Windows platform. It provides the essential logic segments required to build native Windows applications using the Aethelium compiler (`aethelc`).
 
 These files are designed to be incorporated into the final executable as source inputs, ensuring the resulting program remains a standalone EXE file without the need for DLL packaging.
+
+This library is currently in its early stages.
 
 ## Architectural Principle: Source Weaving
 
