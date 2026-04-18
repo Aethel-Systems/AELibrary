@@ -17,7 +17,7 @@ During the compilation phase, the `aethelc` compiler reads these blueprints and 
 To use AELibrary, download the source code and provide the path to the Aethelium compiler using the `--lib` flag.
 
 ### 1. Obtain Resources
-Download the latest `AELibrary.zip` from the Releases section and extract it to your project directory.
+Download the latest `AELibrary.zip` and extract it to your project directory.
 
 ### 2. Add Environment Variable
 Run the following command in PowerShell:
