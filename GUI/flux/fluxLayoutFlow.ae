@@ -1,0 +1,15 @@
+func Flux/Layout/grid/quads(frame: ptr<Flux/Rect>,
+                            top/left: ptr<Flux/Rect>,
+                            top/right: ptr<Flux/Rect>,
+                            bottom/left: ptr<Flux/Rect>,
+                            bottom/right: ptr<Flux/Rect>,
+                            column/gap: Int32,
+                            row/gap: Int32) : UInt64 {
+    let top/band: Flux/Rect
+    let bottom/band: Flux/Rect
+
+    Flux/Layout/stack/v(frame, &top/band, &bottom/band, (frame\height - row/gap) ÷ 2, row/gap)
+    Flux/Layout/split/h(&top/band, top/left, top/right, (top/band\width - column/gap) ÷ 2, column/gap)
+    Flux/Layout/split/h(&bottom/band, bottom/left, bottom/right, (bottom/band\width - column/gap) ÷ 2, column/gap)
+    return 0
+}

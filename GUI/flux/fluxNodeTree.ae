@@ -1,0 +1,34 @@
+struct Flux/Node {
+    frame: Flux/Rect
+    handle: UInt64
+    kind: UInt32
+    parent: UInt64
+    child: UInt64
+    sibling: UInt64
+}
+
+let Flux/Node/KIND/PANEL = 1
+let Flux/Node/KIND/CANVAS = 2
+let Flux/Node/KIND/INTERACTION = 3
+
+func Flux/Node/bind(target: ptr<Flux/Node>, kind: UInt32, handle: UInt64, rect: ptr<Flux/Rect>) : UInt64 {
+    Flux/Rect/set(&target\frame, rect\x, rect\y, rect\width, rect\height)
+    target\handle = handle
+    target\kind = kind
+    target\parent = 0
+    target\child = 0
+    target\sibling = 0
+    return handle
+}
+
+func Flux/Node/attach(parent: ptr<Flux/Node>, child: ptr<Flux/Node>) : UInt64 {
+    child\parent = cast<UInt64>(parent)
+    child\sibling = parent\child
+    parent\child = cast<UInt64>(child)
+    return child\handle
+}
+
+func Flux/Node/show(target: ptr<Flux/Node>) : UInt64 {
+    Aura/Host/window/show/if(target\handle)
+    return target\handle
+}

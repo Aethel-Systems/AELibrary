@@ -1,0 +1,28 @@
+let Aura/Host/ALERT/ICON/ERROR = 0x10
+
+func Aura/Host/alert/error(title: UInt64, body: UInt64) : UInt64 {
+    return cast<UInt64>(win/MessageBoxA(0,
+                                        cast<ptr<UInt8>>(body),
+                                        cast<ptr<UInt8>>(title),
+                                        Aura/Host/ALERT/ICON/ERROR))
+}
+
+func Aura/Host/ensure/nonzero(value: UInt64, title: UInt64, body: UInt64, code: UInt64) : UInt64 {
+    if value == 0 {
+        Aura/Host/alert/error(title, body)
+        return code
+    }
+    return 0
+}
+
+func Aura/Host/run/loop(msg: ptr<Aura/Host/Msg>, hwnd: UInt64, timer/id: UInt64, timer/ms: UInt64) : UInt64 {
+    let timer: UInt64 = win/SetTimer(hwnd, timer/id, timer/ms, 0)
+    if timer == 0 {
+        Aura/Host/alert/error(cast<UInt64>("Aura Host Timer Failure"),
+                              cast<UInt64>("SetTimer returned zero before the GUI loop could begin."))
+        return 21
+    }
+    Aura/Host/message/pump(msg)
+    win/KillTimer(hwnd, timer/id)
+    return 0
+}

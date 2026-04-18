@@ -1,0 +1,49 @@
+func Win/IO/Mem/alloc(base/address: UInt64,
+                      zero/bits: UInt64,
+                      region/size: UInt64,
+                      alloc/type: UInt64,
+                      protect: UInt64) : UInt64 {
+    return win/mem/alloc(cast<UInt64>(-1), base/address, zero/bits, region/size, alloc/type, protect)
+}
+
+func Win/IO/Mem/section/create(section/out: UInt64,
+                               desired/access: UInt64,
+                               object/attributes: UInt64,
+                               maximum/size: UInt64,
+                               protect: UInt64,
+                               allocation/attributes: UInt64,
+                               file/handle: UInt64) : UInt64 {
+    return win/mem/section/create(section/out,
+                                  desired/access,
+                                  object/attributes,
+                                  maximum/size,
+                                  protect,
+                                  allocation/attributes,
+                                  file/handle)
+}
+
+func Win/IO/Mem/section/map(section: UInt64,
+                            process: UInt64,
+                            base/address: UInt64,
+                            zero/bits: UInt64,
+                            commit/size: UInt64,
+                            section/offset: UInt64,
+                            view/size: UInt64,
+                            inherit/disposition: UInt64,
+                            allocation/type: UInt64,
+                            protect: UInt64) : UInt64 {
+    return win/mem/section/map(section,
+                               process,
+                               base/address,
+                               zero/bits,
+                               commit/size,
+                               section/offset,
+                               view/size,
+                               inherit/disposition,
+                               allocation/type,
+                               protect)
+}
+
+func Win/IO/Mem/section/unmap(process: UInt64, base/address: UInt64) : UInt64 {
+    return win/mem/section/unmap(process, base/address)
+}

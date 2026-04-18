@@ -1,0 +1,32 @@
+struct Aura/Shell {
+    hwnd: UInt64
+    chrome: Aura/Host/Chrome
+    nav: Aura/Chrome/Nav
+    glass: Aura/Chrome/GlassField
+    status: Aura/Status/Strip
+}
+
+func Aura/Shell/boot(shell: ptr<Aura/Shell>,
+                     hwnd: UInt64,
+                     title: UInt64,
+                     state: UInt64,
+                     width: Int32,
+                     height: Int32) : UInt64 {
+    shell\hwnd = hwnd
+    Aura/Host/create/titlebar(hwnd,
+                              &shell\chrome,
+                              title,
+                              state,
+                              width)
+    Aura/Host/chrome/present(&shell\chrome, title, state)
+    Aura/Chrome/create/nav(hwnd, &shell\nav, width)
+    Aura/Chrome/create/glass(&shell\glass, hwnd, width, height)
+    Aura/Status/create(&shell\status,
+                       hwnd,
+                       cast<UInt64>("Aura shell: liquid surface / stable telemetry / source merged"),
+                       cast<UInt64>("Flux graph mounted / message pump alive / host loop authoritative"),
+                       cast<UInt64>("single exe / no runtime graft"),
+                       width,
+                       height)
+    return hwnd
+}

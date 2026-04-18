@@ -1,0 +1,48 @@
+struct Win/IO/Signal/Timeout {
+    interval: Int64
+}
+
+func Win/IO/Signal/create/event(handle/out: UInt64,
+                                desired/access: UInt64,
+                                object/attributes: UInt64,
+                                event/type: UInt64,
+                                initial/state: UInt64) : UInt64 {
+    return win/sync/event(handle/out, desired/access, object/attributes, event/type, initial/state)
+}
+
+func Win/IO/Signal/set(handle: UInt64, previous/state: UInt64) : UInt64 {
+    return win/signal/set(handle, previous/state)
+}
+
+func Win/IO/Signal/reset(handle: UInt64, previous/state: UInt64) : UInt64 {
+    return win/signal/reset(handle, previous/state)
+}
+
+func Win/IO/Signal/timeout/poll(target: ptr<Win/IO/Signal/Timeout>) : UInt64 {
+    target\interval = 0
+    return cast<UInt64>(target)
+}
+
+func Win/IO/Signal/timeout/ms(target: ptr<Win/IO/Signal/Timeout>, milliseconds: UInt64) : UInt64 {
+    target\interval = cast<Int64>(0 - (milliseconds * 10000))
+    return cast<UInt64>(target)
+}
+
+func Win/IO/Signal/wait/one(handle: UInt64, alertable: UInt64, timeout: UInt64) : UInt64 {
+    return win/sync/wait/one(handle, alertable, timeout)
+}
+
+func Win/IO/Signal/wait/all(count: UInt64,
+                            handles: UInt64,
+                            wait/type: UInt64,
+                            alertable: UInt64,
+                            timeout: UInt64) : UInt64 {
+    return win/signal/wait/all(count, handles, wait/type, alertable, timeout)
+}
+
+func Win/IO/Signal/set/and/wait(signal/handle: UInt64,
+                                wait/handle: UInt64,
+                                alertable: UInt64,
+                                timeout: UInt64) : UInt64 {
+    return win/signal/and/wait(signal/handle, wait/handle, alertable, timeout)
+}

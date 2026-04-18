@@ -1,0 +1,99 @@
+struct Win/IO/Net/Afd/PollHandle {
+    handle: UInt64
+    events: UInt32
+    status: UInt32
+}
+
+struct Win/IO/Net/Afd/PollInfo {
+    timeout: Int64
+    handle/count: UInt32
+    exclusive: UInt32
+    handles: Win/IO/Net/Afd/PollHandle
+}
+
+struct Win/IO/Net/Afd/TransferWindow {
+    buffer/address: UInt64
+    buffer/length: UInt32
+    flags: UInt32
+}
+
+struct Win/IO/Net/Afd/ReceiveWindow {
+    buffer/address: UInt64
+    buffer/length: UInt32
+    flags: UInt32
+    transport/size: UInt32
+}
+
+struct Win/IO/Net/Afd/PeerWindow {
+    share/access: UInt32
+    transport/size: UInt32
+    transport/slot0: UInt64
+    transport/slot1: UInt64
+    transport/slot2: UInt64
+    transport/slot3: UInt64
+}
+
+let Win/IO/Net/Afd/IOCTL/BIND = 0x12003
+let Win/IO/Net/Afd/IOCTL/CONNECT = 0x12007
+let Win/IO/Net/Afd/IOCTL/START/LISTEN = 0x1200B
+let Win/IO/Net/Afd/IOCTL/WAIT/FOR/LISTEN = 0x1200F
+let Win/IO/Net/Afd/IOCTL/RECEIVE = 0x12017
+let Win/IO/Net/Afd/IOCTL/SEND = 0x1201B
+let Win/IO/Net/Afd/IOCTL/DISCONNECT = 0x1202F
+let Win/IO/Net/Afd/IOCTL/POLL = 0x12024
+let Win/IO/Net/Afd/IOCTL/TRANSPORT/QUERY = 0x1202B
+
+let Win/IO/Net/Afd/EVENT/RECEIVE = 0x0001
+let Win/IO/Net/Afd/EVENT/SEND = 0x0002
+let Win/IO/Net/Afd/EVENT/DISCONNECT = 0x0004
+let Win/IO/Net/Afd/EVENT/ABORT = 0x0008
+let Win/IO/Net/Afd/EVENT/LOCAL/CLOSE = 0x0010
+let Win/IO/Net/Afd/EVENT/CONNECT = 0x0020
+let Win/IO/Net/Afd/EVENT/ACCEPT = 0x0080
+let Win/IO/Net/Afd/EVENT/CONNECT/FAIL = 0x0100
+
+func Win/IO/Net/Afd/poll/info/init(target: ptr<Win/IO/Net/Afd/PollInfo>,
+                                   handle: UInt64,
+                                   events: UInt32,
+                                   timeout/100ns: Int64) : UInt64 {
+    target\timeout = timeout/100ns
+    target\handle/count = 1
+    target\exclusive = 0
+    target\handles\handle = handle
+    target\handles\events = events
+    target\handles\status = 0
+    return cast<UInt64>(target)
+}
+
+func Win/IO/Net/Afd/peer/window/init(target: ptr<Win/IO/Net/Afd/PeerWindow>,
+                                     transport/size: UInt32) : UInt64 {
+    target\share/access = 0
+    target\transport/size = transport/size
+    target\transport/slot0 = 0
+    target\transport/slot1 = 0
+    target\transport/slot2 = 0
+    target\transport/slot3 = 0
+    return cast<UInt64>(target)
+}
+
+func Win/IO/Net/Afd/transfer/window/init(target: ptr<Win/IO/Net/Afd/TransferWindow>,
+                                         buffer/address: UInt64,
+                                         buffer/length: UInt32,
+                                         flags: UInt32) : UInt64 {
+    target\buffer/address = buffer/address
+    target\buffer/length = buffer/length
+    target\flags = flags
+    return cast<UInt64>(target)
+}
+
+func Win/IO/Net/Afd/receive/window/init(target: ptr<Win/IO/Net/Afd/ReceiveWindow>,
+                                        buffer/address: UInt64,
+                                        buffer/length: UInt32,
+                                        flags: UInt32,
+                                        transport/size: UInt32) : UInt64 {
+    target\buffer/address = buffer/address
+    target\buffer/length = buffer/length
+    target\flags = flags
+    target\transport/size = transport/size
+    return cast<UInt64>(target)
+}

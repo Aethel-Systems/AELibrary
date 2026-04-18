@@ -1,0 +1,251 @@
+struct Win/IO/Net/UnicodeString {
+    length: UInt16
+    maximum/length: UInt16
+    buffer: UInt64
+}
+
+struct Win/IO/Net/UnicodeBuffer64 {
+    chars: [64]UInt16
+}
+
+struct Win/IO/Net/ObjectAttributes {
+    length: UInt64
+    root/directory: UInt64
+    object/name: UInt64
+    attributes: UInt64
+    security/descriptor: UInt64
+    security/qos: UInt64
+}
+
+struct Win/IO/Net/IoStatusBlock {
+    status: UInt64
+    information: UInt64
+}
+
+struct Win/IO/Net/Afd/OpenPacket {
+    endpoint/flags: UInt32
+    group/id: UInt32
+    transport/name: UInt64
+}
+
+struct Win/IO/Net/Afd/OpenEaArena {
+    next/entry/offset: UInt32
+    flags: UInt8
+    name/length: UInt8
+    value/length: UInt16
+    name: [16]UInt8
+    endpoint/flags: UInt32
+    group/id: UInt32
+    transport/size: UInt32
+    transport: [64]UInt16
+}
+
+let Win/IO/Net/OBJ/CASE/INSENSITIVE = 0x40
+let Win/IO/Net/FILE/OPEN = 0x01
+let Win/IO/Net/FILE/SYNCHRONOUS/IO/NONALERT = 0x20
+let Win/IO/Net/FILE/NON/DIRECTORY = 0x40
+let Win/IO/Net/FILE/SHARE/READ = 0x01
+let Win/IO/Net/FILE/SHARE/WRITE = 0x02
+let Win/IO/Net/FILE/SHARE/DELETE = 0x04
+let Win/IO/Net/AFD/ACCESS = 0x0012019F
+let Win/IO/Net/AFD/OPEN/FLOW = 0x12003
+
+func Win/IO/Net/unicode/init(target: ptr<Win/IO/Net/UnicodeString>, text: UInt64) : UInt64 {
+    win {
+        return RtlInitUnicodeString(target, text)
+    }
+}
+
+func Win/IO/Net/ascii/length(text: UInt64) : UInt64 {
+    let size: UInt64 = 0
+    let view: ptr<UInt8> = cast<ptr<UInt8>>(text)
+
+    while view[size] != 0 {
+        size = size + 1
+    }
+    return size
+}
+
+func Win/IO/Net/unicode/init/ascii(target: ptr<Win/IO/Net/UnicodeString>,
+                                   storage: ptr<Win/IO/Net/UnicodeBuffer64>,
+                                   text: UInt64) : UInt64 {
+    let chars: UInt64 = 0
+    let source: ptr<UInt8> = cast<ptr<UInt8>>(text)
+
+    while source[chars] != 0 {
+        if chars >= 63 {
+            break
+        }
+        storage\chars[chars] = source[chars] as UInt16
+        chars = chars + 1
+    }
+    storage\chars[chars] = 0
+    target\length = cast<UInt16>(chars * 2)
+    target\maximum/length = cast<UInt16>((chars * 2) + 2)
+    target\buffer = cast<UInt64>(&storage\chars[0])
+    return cast<UInt64>(target)
+}
+
+func Win/IO/Net/object/init(target: ptr<Win/IO/Net/ObjectAttributes>,
+                            name: ptr<Win/IO/Net/UnicodeString>,
+                            attrs: UInt64) : UInt64 {
+    target\length = 48
+    target\root/directory = 0
+    target\object/name = cast<UInt64>(name)
+    target\attributes = attrs
+    target\security/descriptor = 0
+    target\security/qos = 0
+    return 0
+}
+
+func Win/IO/Net/afd/open/ea/build(target: ptr<Win/IO/Net/Afd/OpenEaArena>,
+                                  transport/name: ptr<Win/IO/Net/UnicodeString>) : UInt64 {
+    let name/source: ptr<UInt8> = cast<ptr<UInt8>>(cast<UInt64>("AfdOpenPacketXX"))
+    let name/index: UInt64 = 0
+    let transport/index: UInt64 = 0
+    let transport/chars: UInt64 = transport/name\length ÷ 2
+    let transport/source: ptr<UInt16> = cast<ptr<UInt16>>(transport/name\buffer)
+
+    target\next/entry/offset = 0
+    target\flags = 0
+    target\name/length = 15
+    target\endpoint/flags = 0
+    target\group/id = 0
+
+    while name/index < 15 {
+        target\name[name/index] = name/source[name/index]
+        name/index = name/index + 1
+    }
+    target\name[15] = 0
+
+    if transport/chars > 63 {
+        transport/chars = 63
+    }
+    while transport/index < transport/chars {
+        target\transport[transport/index] = transport/source[transport/index]
+        transport/index = transport/index + 1
+    }
+    target\transport[transport/index] = 0
+    target\transport/size = cast<UInt32>(transport/chars * 2)
+    target\value/length = cast<UInt16>(12 + target\transport/size + 2)
+    return 24 + target\value/length
+}
+
+func Win/IO/Net/afd/open(flow/out: UInt64,
+                         io/status: ptr<Win/IO/Net/IoStatusBlock>,
+                         transport/name: ptr<Win/IO/Net/UnicodeString>) : UInt64 {
+    let afd/path: Win/IO/Net/UnicodeString
+    let afd/path/storage: Win/IO/Net/UnicodeBuffer64
+    let afd/object: Win/IO/Net/ObjectAttributes
+    let afd/open: Win/IO/Net/Afd/OpenEaArena
+    let afd/open/size: UInt64 = 0
+
+    Win/IO/Net/unicode/init/ascii(&afd/path,
+                                  &afd/path/storage,
+                                  cast<UInt64>("\\Device\\Afd\\Endpoint"))
+    Win/IO/Net/object/init(&afd/object, &afd/path, Win/IO/Net/OBJ/CASE/INSENSITIVE)
+    afd/open/size = Win/IO/Net/afd/open/ea/build(&afd/open, transport/name)
+
+    win {
+        return NtCreateFile(flow/out,
+                            Win/IO/Net/AFD/ACCESS,
+                            &afd/object,
+                            io/status,
+                            0,
+                            0,
+                            Win/IO/Net/FILE/SHARE/READ + Win/IO/Net/FILE/SHARE/WRITE + Win/IO/Net/FILE/SHARE/DELETE,
+                            Win/IO/Net/FILE/OPEN,
+                            Win/IO/Net/FILE/SYNCHRONOUS/IO/NONALERT + Win/IO/Net/FILE/NON/DIRECTORY,
+                            &afd/open,
+                            afd/open/size)
+    }
+}
+
+func Win/IO/Net/afd/control(flow: UInt64,
+                            io/status: ptr<Win/IO/Net/IoStatusBlock>,
+                            control/code: UInt64,
+                            in/buffer: UInt64,
+                            in/size: UInt64,
+                            out/buffer: UInt64,
+                            out/size: UInt64) : UInt64 {
+    return win/disk/ioctl(flow,
+                          0,
+                          0,
+                          0,
+                          io/status,
+                          control/code,
+                          in/buffer,
+                          in/size,
+                          out/buffer,
+                          out/size)
+}
+
+func Win/IO/Net/afd/open/flow(flow/out: UInt64,
+                              io/status: ptr<Win/IO/Net/IoStatusBlock>,
+                              transport/name: ptr<Win/IO/Net/UnicodeString>) : UInt64 {
+    return Win/IO/Net/afd/open(flow/out, io/status, transport/name)
+}
+
+func Win/IO/Net/afd/poll(flow: UInt64,
+                         io/status: ptr<Win/IO/Net/IoStatusBlock>,
+                         info: ptr<Win/IO/Net/Afd/PollInfo>) : UInt64 {
+    return Win/IO/Net/afd/control(flow,
+                                  io/status,
+                                  Win/IO/Net/Afd/IOCTL/POLL,
+                                  cast<UInt64>(info),
+                                  32,
+                                  cast<UInt64>(info),
+                                  32)
+}
+
+func Win/IO/Net/afd/query/transport(flow: UInt64,
+                                    io/status: ptr<Win/IO/Net/IoStatusBlock>,
+                                    window: ptr<Win/IO/Net/Afd/PeerWindow>,
+                                    out/size: UInt64) : UInt64 {
+    return Win/IO/Net/afd/control(flow,
+                                  io/status,
+                                  Win/IO/Net/Afd/IOCTL/TRANSPORT/QUERY,
+                                  0,
+                                  0,
+                                  cast<UInt64>(window),
+                                  out/size)
+}
+
+func Win/IO/Net/afd/link/remote(flow: UInt64,
+                                io/status: ptr<Win/IO/Net/IoStatusBlock>,
+                                peer: ptr<Win/IO/Net/Afd/PeerWindow>,
+                                peer/size: UInt64) : UInt64 {
+    return Win/IO/Net/afd/control(flow,
+                                  io/status,
+                                  Win/IO/Net/Afd/IOCTL/CONNECT,
+                                  cast<UInt64>(peer),
+                                  peer/size,
+                                  0,
+                                  0)
+}
+
+func Win/IO/Net/afd/transmit(flow: UInt64,
+                             io/status: ptr<Win/IO/Net/IoStatusBlock>,
+                             window: ptr<Win/IO/Net/Afd/TransferWindow>,
+                             window/size: UInt64) : UInt64 {
+    return Win/IO/Net/afd/control(flow,
+                                  io/status,
+                                  Win/IO/Net/Afd/IOCTL/SEND,
+                                  cast<UInt64>(window),
+                                  window/size,
+                                  0,
+                                  0)
+}
+
+func Win/IO/Net/afd/receive(flow: UInt64,
+                            io/status: ptr<Win/IO/Net/IoStatusBlock>,
+                            window: ptr<Win/IO/Net/Afd/ReceiveWindow>,
+                            window/size: UInt64) : UInt64 {
+    return Win/IO/Net/afd/control(flow,
+                                  io/status,
+                                  Win/IO/Net/Afd/IOCTL/RECEIVE,
+                                  cast<UInt64>(window),
+                                  window/size,
+                                  cast<UInt64>(window),
+                                  window/size)
+}

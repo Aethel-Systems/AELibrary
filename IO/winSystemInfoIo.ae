@@ -1,0 +1,34 @@
+struct Win/IO/Sys/OSVersionInfoExW {
+    size: UInt32
+    major: UInt32
+    minor: UInt32
+    build: UInt32
+    platform/id: UInt32
+    csd/version/slot0: UInt64
+    csd/version/slot1: UInt64
+    csd/version/slot2: UInt64
+    csd/version/slot3: UInt64
+    service/pack/major: UInt16
+    service/pack/minor: UInt16
+    suite/mask: UInt16
+    product/type: UInt8
+    reserved: UInt8
+}
+
+func Win/IO/Sys/query(info/class: UInt64,
+                      buffer: UInt64,
+                      buffer/size: UInt64,
+                      return/length: UInt64) : UInt64 {
+    return win/sys/info/query(info/class, buffer, buffer/size, return/length)
+}
+
+func Win/IO/Sys/version(info: ptr<Win/IO/Sys/OSVersionInfoExW>) : UInt64 {
+    info\size = 284
+    return win/sys/version(info)
+}
+
+func Win/IO/Sys/timer/resolution(min/out: UInt64, max/out: UInt64, current/out: UInt64) : UInt64 {
+    win {
+        return NtQueryTimerResolution(min/out, max/out, current/out)
+    }
+}

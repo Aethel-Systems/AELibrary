@@ -1,0 +1,14 @@
+func Flux/Constraint/fill(parent: ptr<Flux/Rect>, target: ptr<Flux/Rect>) : UInt64 {
+    return Flux/Rect/set(target, parent\x, parent\y, parent\width, parent\height)
+}
+
+func Flux/Constraint/center(parent: ptr<Flux/Rect>,
+                            target: ptr<Flux/Rect>,
+                            width: Int32,
+                            height: Int32) : UInt64 {
+    return Flux/Rect/set(target,
+                         parent\x + ((parent\width - width) ÷ 2),
+                         parent\y + ((parent\height - height) ÷ 2),
+                         width,
+                         height)
+}

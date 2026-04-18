@@ -1,0 +1,7 @@
+func Flux/Interaction/set/label(target: ptr<Flux/Interaction/Node>, title: UInt64) : UInt64 {
+    return Flux/Host/set/title(target\control, title)
+}
+
+func Flux/Canvas/set/label(target: ptr<Flux/Canvas/Node>, title: UInt64) : UInt64 {
+    return Flux/Host/set/title(target\surface, title)
+}

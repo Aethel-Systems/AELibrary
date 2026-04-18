@@ -1,0 +1,41 @@
+struct Flux/Canvas/Legend {
+    header: UInt64
+    detail: UInt64
+}
+
+func Flux/Canvas/create/legend(parent: UInt64,
+                               legend: ptr<Flux/Canvas/Legend>,
+                               header: UInt64,
+                               detail: UInt64,
+                               frame: ptr<Flux/Rect>) : UInt64 {
+    let header/frame: Flux/Rect
+    let detail/frame: Flux/Rect
+    let shell/frame: Flux/Rect
+
+    Flux/Constraint/fill(frame, &header/frame)
+    Flux/Layout/anchor/bottom(frame, &detail/frame, 56)
+    Flux/Constraint/fill(frame, &shell/frame)
+
+    Aura/Host/create/panel(parent,
+                           cast<UInt64>(" "),
+                           shell/frame\x,
+                           shell/frame\y,
+                           shell/frame\width,
+                           shell/frame\height)
+
+    legend\header = Aura/Host/create/label(parent,
+                                           header,
+                                           header/frame\x,
+                                           header/frame\y,
+                                           header/frame\width,
+                                           22)
+    legend\detail = Aura/Host/create/label(parent,
+                                           detail,
+                                           detail/frame\x,
+                                           detail/frame\y,
+                                           detail/frame\width,
+                                           20)
+    Aura/Host/window/show/if(legend\header)
+    Aura/Host/window/show/if(legend\detail)
+    return legend\header
+}

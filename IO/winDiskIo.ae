@@ -1,0 +1,48 @@
+struct Win/IO/Disk/IOStatusBlock {
+    status: UInt64
+    information: UInt64
+}
+
+func Win/IO/Disk/open(file/handle: UInt64,
+                      desired/access: UInt64,
+                      object/attributes: UInt64,
+                      io/status: ptr<Win/IO/Disk/IOStatusBlock>,
+                      share/access: UInt64,
+                      open/options: UInt64) : UInt64 {
+    return win/disk/open(file/handle,
+                         desired/access,
+                         object/attributes,
+                         io/status,
+                         share/access,
+                         open/options)
+}
+
+func Win/IO/Disk/query/file(handle: UInt64,
+                            io/status: ptr<Win/IO/Disk/IOStatusBlock>,
+                            buffer: UInt64,
+                            buffer/size: UInt64,
+                            info/class: UInt64) : UInt64 {
+    return win/disk/query/file(handle, io/status, buffer, buffer/size, info/class)
+}
+
+func Win/IO/Disk/device/ioctl(handle: UInt64,
+                              event: UInt64,
+                              apc/routine: UInt64,
+                              apc/context: UInt64,
+                              io/status: ptr<Win/IO/Disk/IOStatusBlock>,
+                              io/control: UInt64,
+                              in/buffer: UInt64,
+                              in/size: UInt64,
+                              out/buffer: UInt64,
+                              out/size: UInt64) : UInt64 {
+    return win/disk/ioctl(handle,
+                          event,
+                          apc/routine,
+                          apc/context,
+                          io/status,
+                          io/control,
+                          in/buffer,
+                          in/size,
+                          out/buffer,
+                          out/size)
+}

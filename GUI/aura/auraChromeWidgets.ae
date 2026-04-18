@@ -1,0 +1,143 @@
+struct Aura/Chrome/Nav {
+    rail: UInt64
+    primary/card: UInt64
+    primary/text: UInt64
+    secondary/card: UInt64
+    secondary/text: UInt64
+    beacon/card: UInt64
+    beacon/text: UInt64
+}
+
+struct Aura/Chrome/GlassField {
+    top/haze: UInt64
+    side/veil: UInt64
+    telemetry/well: UInt64
+}
+
+struct Aura/Status/Strip {
+    bar: UInt64
+    left: UInt64
+    center: UInt64
+    right: UInt64
+}
+
+func Aura/Chrome/create/nav(parent: UInt64,
+                            nav: ptr<Aura/Chrome/Nav>,
+                            width: Int32) : UInt64 {
+    nav\rail = Aura/Host/create/panel(parent,
+                                      cast<UInt64>(" "),
+                                      18,
+                                      100,
+                                      width,
+                                      46)
+    nav\primary/card = Aura/Host/create/surface(parent,
+                                                cast<UInt64>(" "),
+                                                32,
+                                                108,
+                                                154,
+                                                28)
+    nav\primary/text = Aura/Host/create/label(parent,
+                                              cast<UInt64>("Overview / shell flow"),
+                                              44,
+                                              114,
+                                              136,
+                                              16)
+    nav\secondary/card = Aura/Host/create/surface(parent,
+                                                  cast<UInt64>(" "),
+                                                  196,
+                                                  108,
+                                                  160,
+                                                  28)
+    nav\secondary/text = Aura/Host/create/label(parent,
+                                                cast<UInt64>("Nodes / render field"),
+                                                208,
+                                                114,
+                                                142,
+                                                16)
+    nav\beacon/card = Aura/Host/create/surface(parent,
+                                               cast<UInt64>(" "),
+                                               width - 166,
+                                               108,
+                                               152,
+                                               28)
+    nav\beacon/text = Aura/Host/create/label(parent,
+                                             cast<UInt64>("architect beacon >"),
+                                             width - 154,
+                                             114,
+                                             136,
+                                             16)
+    Aura/Host/window/show/if(nav\rail)
+    Aura/Host/window/show/if(nav\primary/card)
+    Aura/Host/window/show/if(nav\primary/text)
+    Aura/Host/window/show/if(nav\secondary/card)
+    Aura/Host/window/show/if(nav\secondary/text)
+    Aura/Host/window/show/if(nav\beacon/card)
+    Aura/Host/window/show/if(nav\beacon/text)
+    return nav\rail
+}
+
+func Aura/Chrome/create/glass(field: ptr<Aura/Chrome/GlassField>,
+                              parent: UInt64,
+                              width: Int32,
+                              height: Int32) : UInt64 {
+    field\top/haze = Aura/Host/create/panel(parent,
+                                            cast<UInt64>(" "),
+                                            24,
+                                            150,
+                                            width - 48,
+                                            26)
+    field\side/veil = Aura/Host/create/panel(parent,
+                                             cast<UInt64>(" "),
+                                             24,
+                                             188,
+                                             212,
+                                             height - 264)
+    field\telemetry/well = Aura/Host/create/panel(parent,
+                                                  cast<UInt64>(" "),
+                                                  width - 242,
+                                                  188,
+                                                  196,
+                                                  height - 264)
+    Aura/Host/window/show/if(field\top/haze)
+    Aura/Host/window/show/if(field\side/veil)
+    Aura/Host/window/show/if(field\telemetry/well)
+    return field\top/haze
+}
+
+func Aura/Status/create(strip: ptr<Aura/Status/Strip>,
+                        parent: UInt64,
+                        left: UInt64,
+                        center: UInt64,
+                        right: UInt64,
+                        width: Int32,
+                        height: Int32) : UInt64 {
+    strip\bar = Aura/Host/create/panel(parent,
+                                       cast<UInt64>(" "),
+                                       18,
+                                       height - 44,
+                                       width,
+                                       24)
+    strip\left = Aura/Host/create/label(parent,
+                                        left,
+                                        30,
+                                        height - 42,
+                                        260,
+                                        18)
+    strip\center = Aura/Host/create/label(parent,
+                                          center,
+                                          310,
+                                          height - 42,
+                                          360,
+                                          18)
+    strip\right = Aura/Host/create/label(parent,
+                                         right,
+                                         width - 230,
+                                         height - 42,
+                                         190,
+                                         18)
+    Aura/Host/window/show/if(strip\bar)
+    Aura/Host/window/show/if(strip\left)
+    Aura/Host/window/show/if(strip\center)
+    Aura/Host/window/show/if(strip\right)
+    return strip\bar
+}

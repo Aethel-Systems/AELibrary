@@ -1,0 +1,42 @@
+func Win/IO/Proc/open(handle/out: UInt64,
+                      desired/access: UInt64,
+                      object/attributes: UInt64,
+                      client/id: UInt64) : UInt64 {
+    return win/proc/open(handle/out, desired/access, object/attributes, client/id)
+}
+
+func Win/IO/Proc/query/info(handle: UInt64,
+                            info/class: UInt64,
+                            buffer: UInt64,
+                            buffer/size: UInt64,
+                            return/size: UInt64) : UInt64 {
+    return win/proc/query/info(handle, info/class, buffer, buffer/size, return/size)
+}
+
+func Win/IO/Proc/create/user(process/out: UInt64,
+                             thread/out: UInt64,
+                             process/access: UInt64,
+                             thread/access: UInt64,
+                             process/object: UInt64,
+                             thread/object: UInt64,
+                             process/flags: UInt64,
+                             thread/flags: UInt64,
+                             params: UInt64,
+                             create/info: UInt64,
+                             attribute/list: UInt64) : UInt64 {
+    return win/proc/create/user(process/out,
+                                thread/out,
+                                process/access,
+                                thread/access,
+                                process/object,
+                                thread/object,
+                                process/flags,
+                                thread/flags,
+                                params,
+                                create/info,
+                                attribute/list)
+}
+
+func Win/IO/Proc/exit(code: UInt64) : UInt64 {
+    return win/proc/exit(code)
+}

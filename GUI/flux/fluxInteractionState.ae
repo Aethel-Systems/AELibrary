@@ -1,0 +1,60 @@
+struct Flux/Interaction/State {
+    surface: UInt64
+    title: UInt64
+    detail: UInt64
+    action: UInt64
+    action/text: UInt64
+}
+
+func Flux/Interaction/create/state(parent: UInt64,
+                                   state: ptr<Flux/Interaction/State>,
+                                   title: UInt64,
+                                   detail: UInt64,
+                                   action: UInt64,
+                                   frame: ptr<Flux/Rect>) : UInt64 {
+    let title/frame: Flux/Rect
+    let detail/frame: Flux/Rect
+    let action/frame: Flux/Rect
+
+    Flux/Constraint/fill(frame, &title/frame)
+    Flux/Layout/anchor/bottom(frame, &action/frame, 52)
+    Flux/Layout/inset(frame, &detail/frame, 18, 48, 18, 86)
+
+    state\surface = Aura/Host/create/panel(parent,
+                                           cast<UInt64>(" "),
+                                           frame\x,
+                                           frame\y,
+                                           frame\width,
+                                           frame\height)
+
+    state\title = Aura/Host/create/label(parent,
+                                         title,
+                                         title/frame\x,
+                                         title/frame\y,
+                                         title/frame\width,
+                                         22)
+    state\detail = Aura/Host/create/label(parent,
+                                          detail,
+                                          detail/frame\x,
+                                          detail/frame\y,
+                                          detail/frame\width,
+                                          detail/frame\height)
+    state\action = Aura/Host/create/surface(parent,
+                                            cast<UInt64>(" "),
+                                            action/frame\x,
+                                            action/frame\y,
+                                            172,
+                                            26)
+    state\action/text = Aura/Host/create/label(parent,
+                                               action,
+                                               action/frame\x + 12,
+                                               action/frame\y + 5,
+                                               144,
+                                               16)
+    Aura/Host/window/show/if(state\surface)
+    Aura/Host/window/show/if(state\title)
+    Aura/Host/window/show/if(state\detail)
+    Aura/Host/window/show/if(state\action)
+    Aura/Host/window/show/if(state\action/text)
+    return state\action
+}

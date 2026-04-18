@@ -1,0 +1,254 @@
+struct Aura/Host/Point {
+    x: Int32
+    y: Int32
+}
+
+struct Aura/Host/Msg {
+    hwnd: UInt64
+    message: UInt32
+    wParam: UInt64
+    lParam: Int64
+    time: UInt32
+    pt: Aura/Host/Point
+    private: UInt32
+}
+
+struct Aura/Host/WndClassA {
+    style: UInt32
+    lpfnWndProc: UInt64
+    cbClsExtra: Int32
+    cbWndExtra: Int32
+    hInstance: UInt64
+    hIcon: UInt64
+    hCursor: UInt64
+    hbrBackground: UInt64
+    lpszMenuName: UInt64
+    lpszClassName: UInt64
+}
+
+struct Aura/Host/Chrome {
+    title/bar: UInt64
+    title/text: UInt64
+    state/text: UInt64
+    glow/strip: UInt64
+    signal/text: UInt64
+}
+
+let Aura/Host/WM/CLOSE = 0x0010
+let Aura/Host/WM/DESTROY = 0x0002
+let Aura/Host/WM/TIMER = 0x0113
+let Aura/Host/CURSOR/ARROW = 32512
+let Aura/Host/CLASS/STYLE/STANDARD = 3
+let Aura/Host/SHOW/DEFAULT = 5
+let Aura/Host/WS/OVERLAPPED/WINDOW = 0x10CF0000
+let Aura/Host/WS/CHILD/VISIBLE = 0x50000000
+let Aura/Host/ACCENT/PANEL = 0x50800000
+let Aura/Host/STATUS/PANEL = 0x50800000
+
+func Aura/Host/current/module() : UInt64 {
+    var teb/reg: reg<"r14", UInt64>
+    let teb: UInt64 = teb/reg
+    let peb: UInt64 = cast<ptr<UInt64>>(teb + 0x60)[0]
+    return cast<ptr<UInt64>>(peb + 0x10)[0]
+}
+
+func Aura/Host/class/init(target: ptr<Aura/Host/WndClassA>, class/name: UInt64, wndproc: UInt64) : UInt64 {
+    target\style = Aura/Host/CLASS/STYLE/STANDARD
+    target\lpfnWndProc = wndproc
+    target\cbClsExtra = 0
+    target\cbWndExtra = 0
+    target\hInstance = Aura/Host/current/module()
+    target\hIcon = 0
+    target\hCursor = cast<UInt64>(win/LoadCursorA(0, Aura/Host/CURSOR/ARROW))
+    target\hbrBackground = 6
+    target\lpszMenuName = 0
+    target\lpszClassName = class/name
+    return cast<UInt64>(win/RegisterClassA(target))
+}
+
+func Aura/Host/window/create(ex/style: UInt64,
+                              class/name: UInt64,
+                              window/title: UInt64,
+                              style: UInt64,
+                              x: Int32,
+                              y: Int32,
+                              width: Int32,
+                              height: Int32,
+                              parent: UInt64,
+                              menu: UInt64,
+                              param: UInt64) : UInt64 {
+    return cast<UInt64>(win/CreateWindowExA(ex/style,
+                                            cast<ptr<UInt8>>(class/name),
+                                            cast<ptr<UInt8>>(window/title),
+                                            style,
+                                            x,
+                                            y,
+                                            width,
+                                            height,
+                                            parent,
+                                            menu,
+                                            Aura/Host/current/module(),
+                                            param))
+}
+
+func Aura/Host/window/show(hwnd: UInt64) : UInt64 {
+    win/ShowWindow(hwnd, Aura/Host/SHOW/DEFAULT)
+    win/UpdateWindow(hwnd)
+    return hwnd
+}
+
+func Aura/Host/window/show/if(hwnd: UInt64) : UInt64 {
+    if hwnd != 0 {
+        Aura/Host/window/show(hwnd)
+    }
+    return hwnd
+}
+
+func Aura/Host/create/label(parent: UInt64,
+                            title: UInt64,
+                            x: Int32,
+                            y: Int32,
+                            width: Int32,
+                            height: Int32) : UInt64 {
+    return Aura/Host/window/create(0,
+                                   cast<UInt64>("STATIC"),
+                                   title,
+                                   Aura/Host/WS/CHILD/VISIBLE,
+                                   x,
+                                   y,
+                                   width,
+                                   height,
+                                   parent,
+                                   0,
+                                   0)
+}
+
+func Aura/Host/create/panel(parent: UInt64,
+                            title: UInt64,
+                            x: Int32,
+                            y: Int32,
+                            width: Int32,
+                            height: Int32) : UInt64 {
+    return Aura/Host/window/create(0,
+                                   cast<UInt64>("STATIC"),
+                                   title,
+                                   Aura/Host/ACCENT/PANEL,
+                                   x,
+                                   y,
+                                   width,
+                                   height,
+                                   parent,
+                                   0,
+                                   0)
+}
+
+func Aura/Host/create/surface(parent: UInt64,
+                              title: UInt64,
+                              x: Int32,
+                              y: Int32,
+                              width: Int32,
+                              height: Int32) : UInt64 {
+    return Aura/Host/window/create(0,
+                                   cast<UInt64>("STATIC"),
+                                   title,
+                                   Aura/Host/ACCENT/PANEL,
+                                   x,
+                                   y,
+                                   width,
+                                   height,
+                                   parent,
+                                   0,
+                                   0)
+}
+
+func Aura/Host/create/titlebar(parent: UInt64,
+                               chrome: ptr<Aura/Host/Chrome>,
+                               title: UInt64,
+                               state: UInt64,
+                               width: Int32) : UInt64 {
+    chrome\title/bar = Aura/Host/create/panel(parent,
+                                              cast<UInt64>(" "),
+                                              18,
+                                              18,
+                                              width,
+                                              74)
+    chrome\title/text = Aura/Host/create/label(parent,
+                                               title,
+                                               36,
+                                               34,
+                                               width - 72,
+                                               22)
+    chrome\state/text = Aura/Host/create/label(parent,
+                                               state,
+                                               36,
+                                               58,
+                                               width - 220,
+                                               18)
+    chrome\glow/strip = Aura/Host/create/panel(parent,
+                                               cast<UInt64>(" "),
+                                               width - 162,
+                                               34,
+                                               120,
+                                               12)
+    chrome\signal/text = Aura/Host/create/label(parent,
+                                                cast<UInt64>("liquid glass / source merged / nt host"),
+                                                width - 162,
+                                                52,
+                                                120,
+                                                16)
+    Aura/Host/window/show/if(chrome\title/bar)
+    Aura/Host/window/show/if(chrome\title/text)
+    Aura/Host/window/show/if(chrome\state/text)
+    Aura/Host/window/show/if(chrome\glow/strip)
+    Aura/Host/window/show/if(chrome\signal/text)
+    return chrome\title/bar
+}
+
+func Aura/Host/create/statusbar(parent: UInt64,
+                                left: UInt64,
+                                right: UInt64,
+                                width: Int32,
+                                height: Int32) : UInt64 {
+    let bar: UInt64 = Aura/Host/create/panel(parent,
+                                             cast<UInt64>(" "),
+                                             18,
+                                             height - 44,
+                                             width,
+                                             24)
+    let left/label: UInt64 = Aura/Host/create/label(parent,
+                                                    left,
+                                                    30,
+                                                    height - 42,
+                                                    width - 280,
+                                                    18)
+    let right/label: UInt64 = Aura/Host/create/label(parent,
+                                                     right,
+                                                     width - 230,
+                                                     height - 42,
+                                                     190,
+                                                     18)
+    Aura/Host/window/show/if(bar)
+    Aura/Host/window/show/if(left/label)
+    Aura/Host/window/show/if(right/label)
+    return bar
+}
+
+func Aura/Host/message/pump(msg: ptr<Aura/Host/Msg>) : UInt64 {
+    while win/GetMessageA(msg, 0, 0, 0) > 0 {
+        win/TranslateMessage(msg)
+        win/DispatchMessageA(msg)
+    }
+    return cast<UInt64>(msg\message)
+}
+
+func Aura/Host/wndproc/default(hwnd: UInt64, msg: UInt32, wparam: UInt64, lparam: Int64) : Int64 {
+    if msg == Aura/Host/WM/CLOSE {
+        win/PostQuitMessage(0)
+        return 0
+    }
+    if msg == Aura/Host/WM/DESTROY {
+        win/PostQuitMessage(0)
+        return 0
+    }
+    return cast<Int64>(win/DefWindowProcA(hwnd, msg, wparam, lparam))
+}

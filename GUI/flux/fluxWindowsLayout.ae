@@ -1,0 +1,173 @@
+struct Flux/Rect {
+    x: Int32
+    y: Int32
+    width: Int32
+    height: Int32
+}
+
+struct Flux/Canvas/Node {
+    frame: Flux/Rect
+    surface: UInt64
+    title: UInt64
+    detail: UInt64
+    accent: UInt64
+}
+
+struct Flux/Interaction/Node {
+    frame: Flux/Rect
+    control: UInt64
+    title: UInt64
+    detail: UInt64
+    pulse: UInt64
+}
+
+func Flux/Rect/set(target: ptr<Flux/Rect>, x: Int32, y: Int32, width: Int32, height: Int32) : UInt64 {
+    target\x = x
+    target\y = y
+    target\width = width
+    target\height = height
+    return 0
+}
+
+func Flux/Layout/inset(parent: ptr<Flux/Rect>,
+                       target: ptr<Flux/Rect>,
+                       left: Int32,
+                       top: Int32,
+                       right: Int32,
+                       bottom: Int32) : UInt64 {
+    Flux/Rect/set(target,
+                  parent\x + left,
+                  parent\y + top,
+                  parent\width - left - right,
+                  parent\height - top - bottom)
+    return 0
+}
+
+func Flux/Layout/split/h(parent: ptr<Flux/Rect>,
+                         left: ptr<Flux/Rect>,
+                         right: ptr<Flux/Rect>,
+                         left/width: Int32,
+                         gap: Int32) : UInt64 {
+    Flux/Rect/set(left, parent\x, parent\y, left/width, parent\height)
+    Flux/Rect/set(right,
+                  parent\x + left/width + gap,
+                  parent\y,
+                  parent\width - left/width - gap,
+                  parent\height)
+    return 0
+}
+
+func Flux/Layout/stack/v(parent: ptr<Flux/Rect>,
+                         top: ptr<Flux/Rect>,
+                         bottom: ptr<Flux/Rect>,
+                         top/height: Int32,
+                         gap: Int32) : UInt64 {
+    Flux/Rect/set(top, parent\x, parent\y, parent\width, top/height)
+    Flux/Rect/set(bottom,
+                  parent\x,
+                  parent\y + top/height + gap,
+                  parent\width,
+                  parent\height - top/height - gap)
+    return 0
+}
+
+func Flux/Layout/anchor/bottom(parent: ptr<Flux/Rect>,
+                               target: ptr<Flux/Rect>,
+                               height: Int32) : UInt64 {
+    Flux/Rect/set(target,
+                  parent\x,
+                  parent\y + parent\height - height,
+                  parent\width,
+                  height)
+    return 0
+}
+
+func Flux/Host/create/panel(parent: UInt64, title: UInt64, rect: ptr<Flux/Rect>) : UInt64 {
+    return Aura/Host/create/panel(parent,
+                                  title,
+                                  rect\x,
+                                  rect\y,
+                                  rect\width,
+                                  rect\height)
+}
+
+func Flux/Canvas/create(parent: UInt64,
+                        target: ptr<Flux/Canvas/Node>,
+                        title: UInt64,
+                        rect: ptr<Flux/Rect>) : UInt64 {
+    let title/frame: Flux/Rect
+    let detail/frame: Flux/Rect
+    let accent/frame: Flux/Rect
+
+    Flux/Rect/set(&target\frame, rect\x, rect\y, rect\width, rect\height)
+    target\surface = Flux/Host/create/panel(parent, title, &target\frame)
+    Flux/Layout/inset(rect, &title/frame, 18, 18, 18, rect\height - 54)
+    Flux/Layout/anchor/bottom(rect, &detail/frame, 46)
+    Flux/Rect/set(&accent/frame, rect\x + 18, rect\y + rect\height - 26, rect\width - 36, 10)
+    target\title = Aura/Host/create/label(parent,
+                                          title,
+                                          title/frame\x,
+                                          title/frame\y,
+                                          title/frame\width,
+                                          18)
+    target\detail = Aura/Host/create/label(parent,
+                                           cast<UInt64>("render field / free-form geometry / custom compositor-facing surface"),
+                                           detail/frame\x,
+                                           detail/frame\y,
+                                           detail/frame\width,
+                                           18)
+    target\accent = Aura/Host/create/panel(parent,
+                                           cast<UInt64>(" "),
+                                           accent/frame\x,
+                                           accent/frame\y,
+                                           accent/frame\width,
+                                           accent/frame\height)
+    Aura/Host/window/show/if(target\surface)
+    Aura/Host/window/show/if(target\title)
+    Aura/Host/window/show/if(target\detail)
+    Aura/Host/window/show/if(target\accent)
+    return target\surface
+}
+
+func Flux/Interaction/create(parent: UInt64,
+                             target: ptr<Flux/Interaction/Node>,
+                             title: UInt64,
+                             rect: ptr<Flux/Rect>) : UInt64 {
+    let title/frame: Flux/Rect
+    let detail/frame: Flux/Rect
+    let pulse/frame: Flux/Rect
+
+    Flux/Rect/set(&target\frame, rect\x, rect\y, rect\width, rect\height)
+    target\control = Flux/Host/create/panel(parent, cast<UInt64>(" "), &target\frame)
+    Flux/Layout/inset(rect, &title/frame, 18, 18, 18, rect\height - 54)
+    Flux/Layout/anchor/bottom(rect, &detail/frame, 54)
+    Flux/Rect/set(&pulse/frame, rect\x + rect\width - 74, rect\y + 18, 48, 12)
+    target\title = Aura/Host/create/label(parent,
+                                          title,
+                                          title/frame\x,
+                                          title/frame\y,
+                                          title/frame\width,
+                                          18)
+    target\detail = Aura/Host/create/label(parent,
+                                           cast<UInt64>("interaction node / raw event surface / command pulse"),
+                                           detail/frame\x,
+                                           detail/frame\y,
+                                           detail/frame\width,
+                                           18)
+    target\pulse = Aura/Host/create/panel(parent,
+                                          cast<UInt64>(" "),
+                                          pulse/frame\x,
+                                          pulse/frame\y,
+                                          pulse/frame\width,
+                                          pulse/frame\height)
+    Aura/Host/window/show/if(target\control)
+    Aura/Host/window/show/if(target\title)
+    Aura/Host/window/show/if(target\detail)
+    Aura/Host/window/show/if(target\pulse)
+    return target\control
+}
+
+func Flux/Host/set/title(hwnd: UInt64, title: UInt64) : UInt64 {
+    win/SetWindowTextA(hwnd, cast<ptr<UInt8>>(title))
+    return hwnd
+}

@@ -1,0 +1,21 @@
+func Aura/Host/chrome/present(chrome: ptr<Aura/Host/Chrome>, title: UInt64, state: UInt64) : UInt64 {
+    Flux/Host/set/title(chrome\title/text, title)
+    Flux/Host/set/title(chrome\state/text, state)
+    return chrome\title/bar
+}
+
+func Aura/Host/chrome/present/live(chrome: ptr<Aura/Host/Chrome>, tick: UInt64) : UInt64 {
+    if tick == 0 {
+        return Aura/Host/chrome/present(chrome,
+                                        cast<UInt64>("Aura Host Window"),
+                                        cast<UInt64>("Flux nodes active inside a source-merged executable"))
+    }
+    if tick == 1 {
+        return Aura/Host/chrome/present(chrome,
+                                        cast<UInt64>("Aura Host Window"),
+                                        cast<UInt64>("State pulse: liquid surface stable"))
+    }
+    return Aura/Host/chrome/present(chrome,
+                                    cast<UInt64>("Aura Host Window"),
+                                    cast<UInt64>("State pulse: Flux interaction graph awake"))
+}
