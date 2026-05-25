@@ -1,21 +1,35 @@
+// -----------------------------------------------------------------------------
+// Aura Chrome Widgets / Geometry Layout & Structure Compositor
+// -----------------------------------------------------------------------------
+
 struct Aura/Chrome/Nav {
     rail: UInt64
+    rail/divider: UInt64
+    section/core: UInt64
     primary/card: UInt64
     primary/text: UInt64
     secondary/card: UInt64
     secondary/text: UInt64
+    section/tools: UInt64
     beacon/card: UInt64
     beacon/text: UInt64
 }
 
 struct Aura/Chrome/GlassField {
     top/haze: UInt64
+    haze/divider: UInt64
+    haze/title: UInt64
     side/veil: UInt64
+    veil/divider: UInt64
+    veil/text: UInt64
     telemetry/well: UInt64
+    telemetry/divider: UInt64
+    telemetry/header: UInt64
 }
 
 struct Aura/Status/Strip {
     bar: UInt64
+    bar/divider: UInt64
     left: UInt64
     center: UInt64
     right: UInt64
@@ -23,54 +37,80 @@ struct Aura/Status/Strip {
 
 func Aura/Chrome/create/nav(parent: UInt64,
                             nav: ptr<Aura/Chrome/Nav>,
-                            width: Int32) : UInt64 {
+                            width: Int32,
+                            height: Int32) : UInt64 {
+    // Nav Rail bounds: x=0, y=64 (under titlebar), w=260, h=height-64-32(statusbar)
+    let rail/h: Int32 = height - 96
+    
     nav\rail = Aura/Host/create/panel(parent,
                                       cast<UInt64>(" "),
-                                      18,
-                                      100,
-                                      width,
-                                      46)
+                                      0,
+                                      64,
+                                      260,
+                                      rail/h)
+    nav\rail/divider = Aura/Host/create/divider(parent, 259, 64, 1, rail/h)
+
+    nav\section/core = Aura/Host/create/label(parent,
+                                              cast<UInt64>("CORE SYSTEMS"),
+                                              24,
+                                              84,
+                                              200,
+                                              16)
+
     nav\primary/card = Aura/Host/create/surface(parent,
                                                 cast<UInt64>(" "),
-                                                32,
-                                                108,
-                                                154,
-                                                28)
+                                                16,
+                                                110,
+                                                228,
+                                                36)
     nav\primary/text = Aura/Host/create/label(parent,
-                                              cast<UInt64>("Overview / shell flow"),
-                                              44,
-                                              114,
-                                              136,
+                                              cast<UInt64>("  Overview / shell flow"),
+                                              20,
+                                              120,
+                                              200,
                                               16)
-    nav\secondary/card = Aura/Host/create/surface(parent,
-                                                  cast<UInt64>(" "),
-                                                  196,
-                                                  108,
-                                                  160,
-                                                  28)
+
+    nav\secondary/card = Aura/Host/create/panel(parent,
+                                                cast<UInt64>(" "),
+                                                16,
+                                                154,
+                                                228,
+                                                36)
     nav\secondary/text = Aura/Host/create/label(parent,
-                                                cast<UInt64>("Nodes / render field"),
-                                                208,
-                                                114,
-                                                142,
+                                                cast<UInt64>("  Nodes / render field"),
+                                                20,
+                                                164,
+                                                200,
                                                 16)
-    nav\beacon/card = Aura/Host/create/surface(parent,
-                                               cast<UInt64>(" "),
-                                               width - 166,
-                                               108,
-                                               152,
-                                               28)
-    nav\beacon/text = Aura/Host/create/label(parent,
-                                             cast<UInt64>("architect beacon >"),
-                                             width - 154,
-                                             114,
-                                             136,
-                                             16)
+
+    nav\section/tools = Aura/Host/create/label(parent,
+                                               cast<UInt64>("DIAGNOSTICS"),
+                                               24,
+                                               224,
+                                               200,
+                                                16)
+
+    nav\beacon/card = Aura/Host/create/panel(parent,
+                                             cast<UInt64>(" "),
+                                             16,
+                                             250,
+                                             228,
+                                             36)
+    nav\beacon/text = Aura/Host/create/label/mono(parent,
+                                                  cast<UInt64>("  architect beacon  >_"),
+                                                  20,
+                                                  260,
+                                                  200,
+                                                  16)
+
     Aura/Host/window/show/if(nav\rail)
+    Aura/Host/window/show/if(nav\rail/divider)
+    Aura/Host/window/show/if(nav\section/core)
     Aura/Host/window/show/if(nav\primary/card)
     Aura/Host/window/show/if(nav\primary/text)
     Aura/Host/window/show/if(nav\secondary/card)
     Aura/Host/window/show/if(nav\secondary/text)
+    Aura/Host/window/show/if(nav\section/tools)
     Aura/Host/window/show/if(nav\beacon/card)
     Aura/Host/window/show/if(nav\beacon/text)
     return nav\rail
@@ -80,27 +120,68 @@ func Aura/Chrome/create/glass(field: ptr<Aura/Chrome/GlassField>,
                               parent: UInt64,
                               width: Int32,
                               height: Int32) : UInt64 {
+    // Glass field fills the remaining area: X=260, W=width-260
+    let field/w: Int32 = width - 260
+    let field/h: Int32 = height - 96
+    
+    // Top Haze (Breadcrumbs & Tabs area)
     field\top/haze = Aura/Host/create/panel(parent,
                                             cast<UInt64>(" "),
-                                            24,
-                                            150,
-                                            width - 48,
-                                            26)
-    field\side/veil = Aura/Host/create/panel(parent,
-                                             cast<UInt64>(" "),
-                                             24,
-                                             188,
-                                             212,
-                                             height - 264)
+                                            260,
+                                            64,
+                                            field/w,
+                                            48)
+    field\haze/divider = Aura/Host/create/divider(parent, 260, 111, field/w, 1)
+    field\haze/title = Aura/Host/create/label(parent,
+                                              cast<UInt64>("Flux Composite View / Workspace 1"),
+                                              284,
+                                              80,
+                                              400,
+                                              20)
+
+    // Side Veil (Properties/Inspector)
+    let veil/w: Int32 = 280
+    field\side/veil = Aura/Host/create/surface(parent,
+                                               cast<UInt64>(" "),
+                                               260,
+                                               112,
+                                               veil/w,
+                                               field/h - 48)
+    field\veil/divider = Aura/Host/create/divider(parent, 260 + veil/w - 1, 112, 1, field/h - 48)
+    field\veil/text = Aura/Host/create/label(parent,
+                                             cast<UInt64>("INSPECTOR"),
+                                             284,
+                                             136,
+                                             200,
+                                             16)
+
+    // Telemetry Well (Right bound analytics)
+    let well/w: Int32 = 320
+    let well/x: Int32 = width - well/w
     field\telemetry/well = Aura/Host/create/panel(parent,
                                                   cast<UInt64>(" "),
-                                                  width - 242,
-                                                  188,
-                                                  196,
-                                                  height - 264)
+                                                  well/x,
+                                                  112,
+                                                  well/w,
+                                                  field/h - 48)
+    field\telemetry/divider = Aura/Host/create/divider(parent, well/x, 112, 1, field/h - 48)
+    field\telemetry/header = Aura/Host/create/label/mono(parent,
+                                                         cast<UInt64>("SYS_TELEMETRY // LIVE"),
+                                                         well/x + 24,
+                                                         136,
+                                                         250,
+                                                         16)
+
     Aura/Host/window/show/if(field\top/haze)
+    Aura/Host/window/show/if(field\haze/divider)
+    Aura/Host/window/show/if(field\haze/title)
     Aura/Host/window/show/if(field\side/veil)
+    Aura/Host/window/show/if(field\veil/divider)
+    Aura/Host/window/show/if(field\veil/text)
     Aura/Host/window/show/if(field\telemetry/well)
+    Aura/Host/window/show/if(field\telemetry/divider)
+    Aura/Host/window/show/if(field\telemetry/header)
+    
     return field\top/haze
 }
 
@@ -111,31 +192,37 @@ func Aura/Status/create(strip: ptr<Aura/Status/Strip>,
                         right: UInt64,
                         width: Int32,
                         height: Int32) : UInt64 {
+    // Status Bar bounds: Y=height-32, H=32
+    let status/y: Int32 = height - 32
+    
     strip\bar = Aura/Host/create/panel(parent,
                                        cast<UInt64>(" "),
-                                       18,
-                                       height - 44,
+                                       0,
+                                       status/y,
                                        width,
-                                       24)
-    strip\left = Aura/Host/create/label(parent,
-                                        left,
-                                        30,
-                                        height - 42,
-                                        260,
-                                        18)
-    strip\center = Aura/Host/create/label(parent,
-                                          center,
-                                          310,
-                                          height - 42,
-                                          360,
-                                          18)
-    strip\right = Aura/Host/create/label(parent,
-                                         right,
-                                         width - 230,
-                                         height - 42,
-                                         190,
-                                         18)
+                                       32)
+    strip\bar/divider = Aura/Host/create/divider(parent, 0, status/y, width, 1)
+
+    strip\left = Aura/Host/create/label/mono(parent,
+                                             left,
+                                             16,
+                                             status/y + 8,
+                                             400,
+                                             16)
+    strip\center = Aura/Host/create/label/mono(parent,
+                                               center,
+                                               (width - 500) ÷ 2,
+                                               status/y + 8,
+                                               500,
+                                               16)
+    strip\right = Aura/Host/create/label/mono(parent,
+                                              right,
+                                              width - 240,
+                                              status/y + 8,
+                                              224,
+                                              16)
     Aura/Host/window/show/if(strip\bar)
+    Aura/Host/window/show/if(strip\bar/divider)
     Aura/Host/window/show/if(strip\left)
     Aura/Host/window/show/if(strip\center)
     Aura/Host/window/show/if(strip\right)

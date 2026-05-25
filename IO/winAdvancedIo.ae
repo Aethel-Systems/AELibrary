@@ -1,0 +1,128 @@
+// -----------------------------------------------------------------------------
+// Win/IO/Advanced - Industrial Grade Advanced NT Native Operations
+// Handles complete Registry, Threading, Advanced Memory, and IOCP bindings
+// -----------------------------------------------------------------------------
+
+// --- Registry Operations ---
+struct Win/IO/Reg/ObjectAttributes {
+    length: UInt32
+    root/directory: UInt64
+    object/name: UInt64
+    attributes: UInt32
+    security/descriptor: UInt64
+    security/qos: UInt64
+}
+
+struct Win/IO/Reg/UnicodeString {
+    length: UInt16
+    maximum/length: UInt16
+    buffer: UInt64
+}
+
+let Win/IO/Reg/KEY/QUERY/VALUE = 0x0001
+let Win/IO/Reg/KEY/SET/VALUE = 0x0002
+let Win/IO/Reg/KEY/CREATE/SUB/KEY = 0x0004
+let Win/IO/Reg/KEY/ENUMERATE/SUB/KEYS = 0x0008
+let Win/IO/Reg/KEY/NOTIFY = 0x0010
+let Win/IO/Reg/KEY/CREATE/LINK = 0x0020
+let Win/IO/Reg/KEY/READ = 0x20019
+let Win/IO/Reg/KEY/WRITE = 0x20006
+let Win/IO/Reg/KEY/ALL/ACCESS = 0xF003F
+
+func Win/IO/Reg/OpenKey(key/handle: ptr<UInt64>, desired/access: UInt32, obj/attrs: ptr<Win/IO/Reg/ObjectAttributes>) : UInt32 {
+    win { return ntdll/NtOpenKey(key/handle, desired/access, obj/attrs) }
+}
+
+func Win/IO/Reg/CreateKey(key/handle: ptr<UInt64>, desired/access: UInt32, obj/attrs: ptr<Win/IO/Reg/ObjectAttributes>, title/index: UInt32, class/str: UInt64, create/options: UInt32, disposition: ptr<UInt32>) : UInt32 {
+    win { return ntdll/NtCreateKey(key/handle, desired/access, obj/attrs, title/index, class/str, create/options, disposition) }
+}
+
+func Win/IO/Reg/SetValueKey(key/handle: UInt64, value/name: ptr<Win/IO/Reg/UnicodeString>, title/index: UInt32, type: UInt32, data: UInt64, data/size: UInt32) : UInt32 {
+    win { return ntdll/NtSetValueKey(key/handle, value/name, title/index, type, data, data/size) }
+}
+
+func Win/IO/Reg/QueryValueKey(key/handle: UInt64, value/name: ptr<Win/IO/Reg/UnicodeString>, info/class: UInt32, key/value/info: UInt64, length: UInt32, result/length: ptr<UInt32>) : UInt32 {
+    win { return ntdll/NtQueryValueKey(key/handle, value/name, info/class, key/value/info, length, result/length) }
+}
+
+// --- Threading Operations ---
+func Win/IO/Thread/Suspend(thread/handle: UInt64, previous/suspend/count: ptr<UInt32>) : UInt32 {
+    win { return ntdll/NtSuspendThread(thread/handle, previous/suspend/count) }
+}
+
+func Win/IO/Thread/Resume(thread/handle: UInt64, previous/suspend/count: ptr<UInt32>) : UInt32 {
+    win { return ntdll/NtResumeThread(thread/handle, previous/suspend/count) }
+}
+
+func Win/IO/Thread/SetInformation(thread/handle: UInt64, info/class: UInt32, info: UInt64, info/length: UInt32) : UInt32 {
+    win { return ntdll/NtSetInformationThread(thread/handle, info/class, info, info/length) }
+}
+
+// --- I/O Completion Ports (IOCP) ---
+func Win/IO/Async/CreateCompletion(port/handle: ptr<UInt64>, desired/access: UInt32, obj/attrs: ptr<Win/IO/Reg/ObjectAttributes>, count: UInt32) : UInt32 {
+    win { return ntdll/NtCreateIoCompletion(port/handle, desired/access, obj/attrs, count) }
+}
+
+func Win/IO/Async/SetCompletion(port/handle: UInt64, key: UInt64, value1: UInt64, value2: UInt64, value3: UInt64) : UInt32 {
+    win { return ntdll/NtSetIoCompletion(port/handle, key, value1, value2, value3) }
+}
+
+func Win/IO/Async/RemoveCompletion(port/handle: UInt64, key: ptr<UInt64>, value1: ptr<UInt64>, value2: ptr<UInt64>, value3: ptr<UInt64>, timeout: ptr<UInt64>) : UInt32 {
+    win { return ntdll/NtRemoveIoCompletion(port/handle, key, value1, value2, value3, timeout) }
+}
+
+// --- Advanced UI / GDI Bindings ---
+func Win/GDI/CreateCompatibleDC(hdc: UInt64) : UInt64 {
+    win { return gdi32/CreateCompatibleDC(hdc) }
+}
+
+func Win/GDI/CreateCompatibleBitmap(hdc: UInt64, w: Int32, h: Int32) : UInt64 {
+    win { return gdi32/CreateCompatibleBitmap(hdc, w, h) }
+}
+
+func Win/GDI/SelectObject(hdc: UInt64, obj: UInt64) : UInt64 {
+    win { return gdi32/SelectObject(hdc, obj) }
+}
+
+func Win/GDI/DeleteObject(obj: UInt64) : UInt64 {
+    win { return gdi32/DeleteObject(obj) }
+}
+
+func Win/GDI/DeleteDC(hdc: UInt64) : UInt64 {
+    win { return gdi32/DeleteDC(hdc) }
+}
+
+func Win/GDI/BitBlt(dst/dc: UInt64, x: Int32, y: Int32, w: Int32, h: Int32, src/dc: UInt64, sx: Int32, sy: Int32, rop: UInt32) : UInt32 {
+    win { return gdi32/BitBlt(dst/dc, x, y, w, h, src/dc, sx, sy, rop) }
+}
+
+struct Win/GDI/Rect {
+    left: Int32
+    top: Int32
+    right: Int32
+    bottom: Int32
+}
+
+func Win/GDI/FillRect(hdc: UInt64, rect: ptr<Win/GDI/Rect>, brush: UInt64) : Int32 {
+    win { return user32/FillRect(hdc, rect, brush) }
+}
+
+func Win/GDI/RoundRect(hdc: UInt64, x1: Int32, y1: Int32, x2: Int32, y2: Int32, w: Int32, h: Int32) : Int32 {
+    win { return gdi32/RoundRect(hdc, x1, y1, x2, y2, w, h) }
+}
+
+func Win/GDI/CreateSolidBrush(color: UInt32) : UInt64 {
+    win { return gdi32/CreateSolidBrush(color) }
+}
+
+func Win/GDI/CreatePen(style: Int32, width: Int32, color: UInt32) : UInt64 {
+    win { return gdi32/CreatePen(style, width, color) }
+}
+
+func Win/GDI/SetDCBrushColor(hdc: UInt64, color: UInt32) : UInt32 {
+    win { return gdi32/SetDCBrushColor(hdc, color) }
+}
+
+func Win/GDI/SetDCPenColor(hdc: UInt64, color: UInt32) : UInt32 {
+    win { return gdi32/SetDCPenColor(hdc, color) }
+}

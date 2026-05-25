@@ -1,0 +1,109 @@
+struct Win/Desktop/Point {
+    x: Int32
+    y: Int32
+}
+
+let Win/Desktop/WM/HOTKEY = 0x0312
+
+let Win/Desktop/MOD/ALT = 0x0001
+let Win/Desktop/MOD/CONTROL = 0x0002
+let Win/Desktop/MOD/SHIFT = 0x0004
+
+let Win/Desktop/SW/HIDE = 0
+let Win/Desktop/SW/SHOWNOACTIVATE = 4
+
+let Win/Desktop/HWND/TOPMOST = 0xFFFFFFFFFFFFFFFF
+
+let Win/Desktop/SWP/NOSIZE = 0x0001
+let Win/Desktop/SWP/NOMOVE = 0x0002
+let Win/Desktop/SWP/NOACTIVATE = 0x0010
+let Win/Desktop/SWP/SHOWWINDOW = 0x0040
+
+let Win/Desktop/SM/CXSCREEN = 0
+let Win/Desktop/SM/CYSCREEN = 1
+
+func Win/Desktop/register/hotkey(hwnd: UInt64, id: Int32, modifiers: UInt32, key: UInt32) : UInt64 {
+    win {
+        return user32/RegisterHotKey(hwnd, id, modifiers, key)
+    }
+}
+
+func Win/Desktop/unregister/hotkey(hwnd: UInt64, id: Int32) : UInt64 {
+    win {
+        return user32/UnregisterHotKey(hwnd, id)
+    }
+}
+
+func Win/Desktop/get/cursor/pos(target: ptr<Win/Desktop/Point>) : UInt64 {
+    win {
+        return user32/GetCursorPos(target)
+    }
+}
+
+func Win/Desktop/system/metric(index: UInt64) : UInt64 {
+    win {
+        return user32/GetSystemMetrics(index)
+    }
+}
+
+func Win/Desktop/set/window/pos(hwnd: UInt64,
+                                insert/after: UInt64,
+                                x: Int32,
+                                y: Int32,
+                                width: Int32,
+                                height: Int32,
+                                flags: UInt32) : UInt64 {
+    win {
+        return user32/SetWindowPos(hwnd, insert/after, x, y, width, height, flags)
+    }
+}
+
+func Win/Desktop/bring/to/top(hwnd: UInt64) : UInt64 {
+    win {
+        return user32/BringWindowToTop(hwnd)
+    }
+}
+
+func Win/Desktop/set/foreground(hwnd: UInt64) : UInt64 {
+    win {
+        return user32/SetForegroundWindow(hwnd)
+    }
+}
+
+func Win/Desktop/hotkey/register(hwnd: UInt64, id: Int32, modifiers: UInt32, key: UInt32) : UInt64 {
+    return Win/Desktop/register/hotkey(hwnd, id, modifiers, key)
+}
+
+func Win/Desktop/hotkey/unregister(hwnd: UInt64, id: Int32) : UInt64 {
+    return Win/Desktop/unregister/hotkey(hwnd, id)
+}
+
+func Win/Desktop/cursor/position(target: ptr<Win/Desktop/Point>) : UInt64 {
+    return Win/Desktop/get/cursor/pos(target)
+}
+
+func Win/Desktop/window/hide(hwnd: UInt64) : UInt64 {
+    return win/ShowWindow(hwnd, Win/Desktop/SW/HIDE)
+}
+
+func Win/Desktop/window/show/no/activate(hwnd: UInt64) : UInt64 {
+    return win/ShowWindow(hwnd, Win/Desktop/SW/SHOWNOACTIVATE)
+}
+
+func Win/Desktop/window/show/popup(hwnd: UInt64,
+                                   x: Int32,
+                                   y: Int32,
+                                   width: Int32,
+                                   height: Int32) : UInt64 {
+    Win/Desktop/set/window/pos(hwnd,
+                               Win/Desktop/HWND/TOPMOST,
+                               x,
+                               y,
+                               width,
+                               height,
+                               Win/Desktop/SWP/NOACTIVATE + Win/Desktop/SWP/SHOWWINDOW)
+    Win/Desktop/window/show/no/activate(hwnd)
+    Win/Desktop/bring/to/top(hwnd)
+    Win/Desktop/set/foreground(hwnd)
+    return hwnd
+}

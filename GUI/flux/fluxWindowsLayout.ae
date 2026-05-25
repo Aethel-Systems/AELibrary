@@ -168,6 +168,6 @@ func Flux/Interaction/create(parent: UInt64,
 }
 
 func Flux/Host/set/title(hwnd: UInt64, title: UInt64) : UInt64 {
-    win/SetWindowTextA(hwnd, cast<ptr<UInt8>>(title))
+    Aura/Host/user32/set/window/text(hwnd, title)
     return hwnd
 }

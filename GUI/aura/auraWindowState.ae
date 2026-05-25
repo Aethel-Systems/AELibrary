@@ -1,21 +1,33 @@
+// -----------------------------------------------------------------------------
+// Aura Window State / Real-time Telemetry Mutators
+// -----------------------------------------------------------------------------
+
 func Aura/Host/chrome/present(chrome: ptr<Aura/Host/Chrome>, title: UInt64, state: UInt64) : UInt64 {
-    Flux/Host/set/title(chrome\title/text, title)
-    Flux/Host/set/title(chrome\state/text, state)
+    // By triggering SetWindowText, Windows invalidates the specific rect.
+    // Thanks to our transparent HOLLOW_BRUSH in wndproc intercept, text renders cleanly
+    // over the DWM Mica immersive background.
+    Aura/Host/user32/set/window/text(chrome\title/text, title)
+    Aura/Host/user32/set/window/text(chrome\state/text, state)
     return chrome\title/bar
 }
 
 func Aura/Host/chrome/present/live(chrome: ptr<Aura/Host/Chrome>, tick: UInt64) : UInt64 {
     if tick == 0 {
         return Aura/Host/chrome/present(chrome,
-                                        cast<UInt64>("Aura Host Window"),
-                                        cast<UInt64>("Flux nodes active inside a source-merged executable"))
+                                        cast<UInt64>("Aura Shell // Architect Mode"),
+                                        cast<UInt64>("[SYS_INIT] Flux graph compiling ..."))
     }
     if tick == 1 {
         return Aura/Host/chrome/present(chrome,
-                                        cast<UInt64>("Aura Host Window"),
-                                        cast<UInt64>("State pulse: liquid surface stable"))
+                                        cast<UInt64>("Aura Shell // Architect Mode"),
+                                        cast<UInt64>("[MEM_SYNC] Liquid surface binding stable."))
+    }
+    if tick == 2 {
+        return Aura/Host/chrome/present(chrome,
+                                        cast<UInt64>("Aura Shell // Architect Mode"),
+                                        cast<UInt64>("[RENDER] DWM Mica backdrop engaged."))
     }
     return Aura/Host/chrome/present(chrome,
-                                    cast<UInt64>("Aura Host Window"),
-                                    cast<UInt64>("State pulse: Flux interaction graph awake"))
+                                    cast<UInt64>("Aura Shell // Architect Mode"),
+                                    cast<UInt64>("[OP_NORMAL] Flux interaction graph awake."))
 }

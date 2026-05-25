@@ -1,9 +1,41 @@
+// -----------------------------------------------------------------------------
+// Aura Window Shell / Compositor & App Bootstrap
+// -----------------------------------------------------------------------------
+
 struct Aura/Shell {
     hwnd: UInt64
+    theme: Aura/Theme/Palette
     chrome: Aura/Host/Chrome
     nav: Aura/Chrome/Nav
     glass: Aura/Chrome/GlassField
     status: Aura/Status/Strip
+}
+
+func Aura/Shell/init/theme(hwnd: UInt64, theme: ptr<Aura/Theme/Palette>) : UInt64 {
+    // 1. Generate Solid Brushes for deeply layered Dark Mode
+    theme\brush/background = Aura/Host/gdi32/create/solid/brush(Aura/Theme/Color/DeepAbyss)
+    theme\brush/surface = Aura/Host/gdi32/create/solid/brush(Aura/Theme/Color/GlassSurface)
+    theme\brush/rail = Aura/Host/gdi32/create/solid/brush(Aura/Theme/Color/RailSurface)
+    let brush/divider: UInt64 = Aura/Host/gdi32/create/solid/brush(Aura/Theme/Color/BorderSubtle)
+
+    // 2. Generate Industrial Typography
+    // CreateFontA(h, w, esc, ori, weight, i, u, s, char, out, clip, qual, pitch, name)
+    // Quality 5 = CLEARTYPE_QUALITY
+    theme\font/title = Aura/Host/gdi32/create/font(24, 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0, cast<UInt64>("Segoe UI"))
+    theme\font/body = Aura/Host/gdi32/create/font(15, 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5, 0, cast<UInt64>("Segoe UI"))
+    theme\font/mono = Aura/Host/gdi32/create/font(14, 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5, 0, cast<UInt64>("Consolas"))
+
+    // 3. Bind to window properties so wndproc can access them seamlessly without globals
+    Aura/Host/user32/set/prop(hwnd, cast<UInt64>("AuraTheme_BrushBg"), theme\brush/background)
+    Aura/Host/user32/set/prop(hwnd, cast<UInt64>("AuraTheme_BrushSurface"), theme\brush/surface)
+    Aura/Host/user32/set/prop(hwnd, cast<UInt64>("AuraTheme_BrushRail"), theme\brush/rail)
+    Aura/Host/user32/set/prop(hwnd, cast<UInt64>("AuraBrush_Divider"), brush/divider)
+    
+    Aura/Host/user32/set/prop(hwnd, cast<UInt64>("AuraTheme_FontTitle"), theme\font/title)
+    Aura/Host/user32/set/prop(hwnd, cast<UInt64>("AuraTheme_FontBody"), theme\font/body)
+    Aura/Host/user32/set/prop(hwnd, cast<UInt64>("AuraTheme_FontMono"), theme\font/mono)
+
+    return 0
 }
 
 func Aura/Shell/boot(shell: ptr<Aura/Shell>,
@@ -13,20 +45,32 @@ func Aura/Shell/boot(shell: ptr<Aura/Shell>,
                      width: Int32,
                      height: Int32) : UInt64 {
     shell\hwnd = hwnd
+    
+    // Inject custom GDI theme before any child window is created
+    Aura/Shell/init/theme(hwnd, &shell\theme)
+    
+    // Apply DWM Immersive Dark Mode and Mica (Liquid Glass)
+    Aura/Host/apply/glass/frame(hwnd)
+
+    // Build precisely computed industrial layout
     Aura/Host/create/titlebar(hwnd,
                               &shell\chrome,
                               title,
                               state,
                               width)
+                              
     Aura/Host/chrome/present(&shell\chrome, title, state)
-    Aura/Chrome/create/nav(hwnd, &shell\nav, width)
+    
+    Aura/Chrome/create/nav(hwnd, &shell\nav, width, height)
     Aura/Chrome/create/glass(&shell\glass, hwnd, width, height)
+    
     Aura/Status/create(&shell\status,
                        hwnd,
-                       cast<UInt64>("Aura shell: liquid surface / stable telemetry / source merged"),
-                       cast<UInt64>("Flux graph mounted / message pump alive / host loop authoritative"),
-                       cast<UInt64>("single exe / no runtime graft"),
+                       cast<UInt64>("SYS // LIQUID SURFACE STABLE"),
+                       cast<UInt64>("FLUX COMPOSITOR ALIVE // HOST LOOP AUTHORITATIVE"),
+                       cast<UInt64>("AETHEL OS NATIVE // DWM MICA"),
                        width,
                        height)
+                       
     return hwnd
 }

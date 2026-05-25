@@ -1,0 +1,257 @@
+// -----------------------------------------------------------------------------
+// Flux SwiftUI-like Declarative Core
+// Industrial-grade layout engine and rendering pipeline
+// -----------------------------------------------------------------------------
+
+struct Flux/UI/Color {
+    value: UInt32 // 0x00BBGGRR
+}
+
+func Flux/Color/RGB(r: UInt8, g: UInt8, b: UInt8) : UInt32 {
+    let r32: UInt32 = r as UInt32
+    let g32: UInt32 = g as UInt32
+    let b32: UInt32 = b as UInt32
+    return (b32 << 16) | (g32 << 8) | r32
+}
+
+let FLUX/NODE/VSTACK = 1
+let FLUX/NODE/HSTACK = 2
+let FLUX/NODE/ZSTACK = 3
+let FLUX/NODE/TEXT = 4
+let FLUX/NODE/ROUNDEDRECT = 5
+let FLUX/NODE/SPACER = 6
+
+struct Flux/UI/Node {
+    type: UInt32
+    children: ptr<UInt64> // array of pointers to Flux/UI/Node
+    child/count: Int32
+    
+    // Modifiers
+    bg/color: UInt32
+    corner/radius: Int32
+    padding/x: Int32
+    padding/y: Int32
+    flex/grow: Int32
+    text/ptr: UInt64
+    text/color: UInt32
+    font/size: Int32
+    
+    // Computed Layout
+    x: Int32
+    y: Int32
+    w: Int32
+    h: Int32
+}
+
+func Flux/UI/CreateNode(type: UInt32) : ptr<Flux/UI/Node> {
+    let base: UInt64 = 0
+    let size: UInt64 = 4096
+    win { ntdll/NtAllocateVirtualMemory(cast<UInt64>(-1), &base, 0, &size, 0x3000, 0x04) }
+    let node: ptr<Flux/UI/Node> = cast<ptr<Flux/UI/Node>>(base)
+    node\type = type
+    node\child/count = 0
+    node\padding/x = 0
+    node\padding/y = 0
+    node\flex/grow = 0
+    node\bg/color = 0x00000000
+    return node
+}
+
+func Flux/UI/VStack(children: ptr<UInt64>, count: Int32) : ptr<Flux/UI/Node> {
+    let node: ptr<Flux/UI/Node> = Flux/UI/CreateNode(FLUX/NODE/VSTACK)
+    node\children = children
+    node\child/count = count
+    return node
+}
+
+func Flux/UI/HStack(children: ptr<UInt64>, count: Int32) : ptr<Flux/UI/Node> {
+    let node: ptr<Flux/UI/Node> = Flux/UI/CreateNode(FLUX/NODE/HSTACK)
+    node\children = children
+    node\child/count = count
+    return node
+}
+
+func Flux/UI/ZStack(children: ptr<UInt64>, count: Int32) : ptr<Flux/UI/Node> {
+    let node: ptr<Flux/UI/Node> = Flux/UI/CreateNode(FLUX/NODE/ZSTACK)
+    node\children = children
+    node\child/count = count
+    return node
+}
+
+func Flux/UI/Text(text: UInt64, color: UInt32, size: Int32) : ptr<Flux/UI/Node> {
+    let node: ptr<Flux/UI/Node> = Flux/UI/CreateNode(FLUX/NODE/TEXT)
+    node\text/ptr = text
+    node\text/color = color
+    node\font/size = size
+    return node
+}
+
+func Flux/UI/RoundedRectangle(color: UInt32, radius: Int32) : ptr<Flux/UI/Node> {
+    let node: ptr<Flux/UI/Node> = Flux/UI/CreateNode(FLUX/NODE/ROUNDEDRECT)
+    node\bg/color = color
+    node\corner/radius = radius
+    node\flex/grow = 1
+    return node
+}
+
+func Flux/UI/Spacer() : ptr<Flux/UI/Node> {
+    let node: ptr<Flux/UI/Node> = Flux/UI/CreateNode(FLUX/NODE/SPACER)
+    node\flex/grow = 1
+    return node
+}
+
+// Layout Engine
+func Flux/UI/ComputeLayout(node: ptr<Flux/UI/Node>, x: Int32, y: Int32, w: Int32, h: Int32) : UInt64 {
+    node\x = x
+    node\y = y
+    node\w = w
+    node\h = h
+    
+    let inner/x: Int32 = x + node\padding/x
+    let inner/y: Int32 = y + node\padding/y
+    let inner/w: Int32 = w - (node\padding/x * 2)
+    let inner/h: Int32 = h - (node\padding/y * 2)
+
+    if node\type == FLUX/NODE/VSTACK {
+        let total/fixed/h: Int32 = 0
+        let total/grow: Int32 = 0
+        
+        let i: Int32 = 0
+        while i < node\child/count {
+            let arr: ptr<UInt64> = node\children
+            if child\flex/grow > 0 {
+                total/grow = total/grow + child\flex/grow
+            } else {
+                total/fixed/h = total/fixed/h + 30 // hardcoded default height
+            }
+            i = i + 1
+        }
+        
+        let remaining/h: Int32 = inner/h - total/fixed/h
+        if remaining/h < 0 { remaining/h = 0 }
+        
+        let cur/y: Int32 = inner/y
+        i = 0
+        while i < node\child/count {
+            let arr: ptr<UInt64> = node\children
+            let child/h: Int32 = 30
+            if child\flex/grow > 0 {
+                child/h = (remaining/h * child\flex/grow) ÷ total/grow
+            }
+            Flux/UI/ComputeLayout(child, inner/x, cur/y, inner/w, child/h)
+            cur/y = cur/y + child/h
+            i = i + 1
+        }
+    } else if node\type == FLUX/NODE/HSTACK {
+        let total/fixed/w: Int32 = 0
+        let total/grow: Int32 = 0
+        
+        let i: Int32 = 0
+        while i < node\child/count {
+            let arr: ptr<UInt64> = node\children
+            if child\flex/grow > 0 {
+                total/grow = total/grow + child\flex/grow
+            } else {
+                total/fixed/w = total/fixed/w + 100 // hardcoded default width
+            }
+            i = i + 1
+        }
+        
+        let remaining/w: Int32 = inner/w - total/fixed/w
+        if remaining/w < 0 { remaining/w = 0 }
+        
+        let cur/x: Int32 = inner/x
+        i = 0
+        while i < node\child/count {
+            let arr: ptr<UInt64> = node\children
+            let child/w: Int32 = 100
+            if child\flex/grow > 0 {
+                child/w = (remaining/w * child\flex/grow) ÷ total/grow
+            }
+            Flux/UI/ComputeLayout(child, cur/x, inner/y, child/w, inner/h)
+            cur/x = cur/x + child/w
+            i = i + 1
+        }
+    } else if node\type == FLUX/NODE/ZSTACK {
+        let i: Int32 = 0
+        while i < node\child/count {
+            let arr: ptr<UInt64> = node\children
+            Flux/UI/ComputeLayout(child, inner/x, inner/y, inner/w, inner/h)
+            i = i + 1
+        }
+    }
+    return 0
+}
+
+// Rendering Engine (using WinGdiAdvanced)
+func Flux/UI/RenderNode(hdc: UInt64, node: ptr<Flux/UI/Node>) : UInt64 {
+    if node\type == FLUX/NODE/ROUNDEDRECT {
+        let brush: UInt64 = Win/GDI/CreateSolidBrush(node\bg/color)
+        let old/brush: UInt64 = Win/GDI/SelectObject(hdc, brush)
+        
+        let pen: UInt64 = Win/GDI/CreatePen(5, 0, 0) // PS/NULL
+        let old/pen: UInt64 = Win/GDI/SelectObject(hdc, pen)
+        
+        Win/GDI/RoundRect(hdc, node\x, node\y, node\x + node\w, node\y + node\h, node\corner/radius, node\corner/radius)
+        
+        Win/GDI/SelectObject(hdc, old/brush)
+        Win/GDI/SelectObject(hdc, old/pen)
+        Win/GDI/DeleteObject(brush)
+        Win/GDI/DeleteObject(pen)
+    } else if node\type == FLUX/NODE/TEXT {
+        win { gdi32/SetBkMode(hdc, 1) } // TRANSPARENT
+        win { gdi32/SetTextColor(hdc, node\text/color) }
+        
+        let rect: Win/GDI/Rect
+        rect\left = node\x
+        rect\top = node\y
+        rect\right = node\x + node\w
+        rect\bottom = node\y + node\h
+        
+        win { user32/DrawTextA(hdc, node\text/ptr, -1, &rect, 0x24) } // DT/CENTER | DT/VCENTER | DT/SINGLELINE
+    }
+    
+    // Draw children
+    let i: Int32 = 0
+    while i < node\child/count {
+        let arr: ptr<UInt64> = node\children
+        Flux/UI/RenderNode(hdc, child)
+        i = i + 1
+    }
+    
+    return 0
+}
+
+func Flux/UI/RenderNoRoot(hwnd: UInt64, NoRoot: ptr<Flux/UI/Node>, w: Int32, h: Int32) : UInt64 {
+    let hdc: UInt64 = 0
+    win { hdc = user32/GetDC(hwnd) }
+    
+    let mem/dc: UInt64 = Win/GDI/CreateCompatibleDC(hdc)
+    let mem/bmp: UInt64 = Win/GDI/CreateCompatibleBitmap(hdc, w, h)
+    let old/bmp: UInt64 = Win/GDI/SelectObject(mem/dc, mem/bmp)
+    
+    // Clear background
+    let bg/rect: Win/GDI/Rect
+    bg/rect\left = 0
+    bg/rect\top = 0
+    bg/rect\right = w
+    bg/rect\bottom = h
+    let bg/brush: UInt64 = Win/GDI/CreateSolidBrush(0x00131111) // Aura/Theme/Color/DeepAbyss
+    Win/GDI/FillRect(mem/dc, &bg/rect, bg/brush)
+    Win/GDI/DeleteObject(bg/brush)
+    
+    // Layout and render
+    Flux/UI/ComputeLayout(NoRoot, 0, 0, w, h)
+    Flux/UI/RenderNode(mem/dc, NoRoot)
+    
+    // BitBlt to screen
+    Win/GDI/BitBlt(hdc, 0, 0, w, h, mem/dc, 0, 0, 0x00CC0020) // SRCCOPY
+    
+    // Cleanup
+    Win/GDI/SelectObject(mem/dc, old/bmp)
+    Win/GDI/DeleteObject(mem/bmp)
+    Win/GDI/DeleteDC(mem/dc)
+    win { user32/ReleaseDC(hwnd, hdc) }
+    
+    return 0
+}

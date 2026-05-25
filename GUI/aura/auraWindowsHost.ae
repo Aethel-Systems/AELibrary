@@ -1,3 +1,7 @@
+// -----------------------------------------------------------------------------
+// Aura Windows Host / Desktop Window Manager Integration
+// -----------------------------------------------------------------------------
+
 struct Aura/Host/Point {
     x: Int32
     y: Int32
@@ -32,6 +36,7 @@ struct Aura/Host/Chrome {
     state/text: UInt64
     glow/strip: UInt64
     signal/text: UInt64
+    divider: UInt64
 }
 
 let Aura/Host/WM/CLOSE = 0x0010
@@ -42,14 +47,243 @@ let Aura/Host/CLASS/STYLE/STANDARD = 3
 let Aura/Host/SHOW/DEFAULT = 5
 let Aura/Host/WS/OVERLAPPED/WINDOW = 0x10CF0000
 let Aura/Host/WS/CHILD/VISIBLE = 0x50000000
-let Aura/Host/ACCENT/PANEL = 0x50800000
-let Aura/Host/STATUS/PANEL = 0x50800000
+let Aura/Host/ACCENT/PANEL = 0x50000000
 
 func Aura/Host/current/module() : UInt64 {
     var teb/reg: reg<"r14", UInt64>
     let teb: UInt64 = teb/reg
     let peb: UInt64 = cast<ptr<UInt64>>(teb + 0x60)[0]
     return cast<ptr<UInt64>>(peb + 0x10)[0]
+}
+
+func Aura/Host/dwm/set/window/attribute(hwnd: UInt64, attr: UInt64, value: UInt64, size: UInt64) : UInt64 {
+    win {
+        return dwmapi/DwmSetWindowAttribute(hwnd, attr, value, size)
+    }
+}
+
+func Aura/Host/dwm/extend/frame(hwnd: UInt64, margins: UInt64) : UInt64 {
+    win {
+        return dwmapi/DwmExtendFrameIntoClientArea(hwnd, margins)
+    }
+}
+
+func Aura/Host/user32/load/cursor(instance: UInt64, cursor/id: UInt64) : UInt64 {
+    win {
+        return user32/LoadCursorA(instance, cursor/id)
+    }
+}
+
+func Aura/Host/gdi32/create/solid/brush(color: UInt64) : UInt64 {
+    win {
+        return gdi32/CreateSolidBrush(color)
+    }
+}
+
+func Aura/Host/user32/register/class(target: ptr<Aura/Host/WndClassA>) : UInt64 {
+    win {
+        return user32/RegisterClassA(target)
+    }
+}
+
+func Aura/Host/user32/create/window/ex(ex/style: UInt64,
+                                        class/name: UInt64,
+                                        window/title: UInt64,
+                                        style: UInt64,
+                                        x: Int32,
+                                        y: Int32,
+                                        width: Int32,
+                                        height: Int32,
+                                        parent: UInt64,
+                                        menu: UInt64,
+                                        instance: UInt64,
+                                        param: UInt64) : UInt64 {
+    win {
+        return user32/CreateWindowExA(ex/style,
+                                      cast<ptr<UInt8>>(class/name),
+                                      cast<ptr<UInt8>>(window/title),
+                                      style,
+                                      x,
+                                      y,
+                                      width,
+                                      height,
+                                      parent,
+                                      menu,
+                                      instance,
+                                      param)
+    }
+}
+
+func Aura/Host/user32/show/window(hwnd: UInt64, cmd: UInt64) : UInt64 {
+    win {
+        return user32/ShowWindow(hwnd, cmd)
+    }
+}
+
+func Aura/Host/user32/update/window(hwnd: UInt64) : UInt64 {
+    win {
+        return user32/UpdateWindow(hwnd)
+    }
+}
+
+func Aura/Host/user32/send/message(hwnd: UInt64, msg: UInt64, wparam: UInt64, lparam: UInt64) : UInt64 {
+    win {
+        return user32/SendMessageA(hwnd, msg, wparam, lparam)
+    }
+}
+
+func Aura/Host/user32/get/prop(hwnd: UInt64, name: UInt64) : UInt64 {
+    win {
+        return user32/GetPropA(hwnd, cast<ptr<UInt8>>(name))
+    }
+}
+
+func Aura/Host/user32/set/prop(hwnd: UInt64, name: UInt64, value: UInt64) : UInt64 {
+    win {
+        return user32/SetPropA(hwnd, cast<ptr<UInt8>>(name), value)
+    }
+}
+
+func Aura/Host/user32/get/message(msg: ptr<Aura/Host/Msg>,
+                                  hwnd: UInt64,
+                                  min/msg: UInt64,
+                                  max/msg: UInt64) : Int64 {
+    win {
+        return user32/GetMessageA(msg, hwnd, min/msg, max/msg)
+    }
+}
+
+func Aura/Host/user32/translate/message(msg: ptr<Aura/Host/Msg>) : UInt64 {
+    win {
+        return user32/TranslateMessage(msg)
+    }
+}
+
+func Aura/Host/user32/dispatch/message(msg: ptr<Aura/Host/Msg>) : Int64 {
+    win {
+        return user32/DispatchMessageA(msg)
+    }
+}
+
+func Aura/Host/user32/post/quit(code: UInt64) : UInt64 {
+    win {
+        return user32/PostQuitMessage(code)
+    }
+}
+
+func Aura/Host/gdi32/set/bk/mode(hdc: UInt64, mode: UInt64) : UInt64 {
+    win {
+        return gdi32/SetBkMode(hdc, mode)
+    }
+}
+
+func Aura/Host/gdi32/set/text/color(hdc: UInt64, color: UInt64) : UInt64 {
+    win {
+        return gdi32/SetTextColor(hdc, color)
+    }
+}
+
+func Aura/Host/gdi32/get/stock/object(object/id: UInt64) : UInt64 {
+    win {
+        return gdi32/GetStockObject(object/id)
+    }
+}
+
+func Aura/Host/user32/def/window/proc(hwnd: UInt64, msg: UInt32, wparam: UInt64, lparam: Int64) : Int64 {
+    win {
+        return user32/DefWindowProcA(hwnd, msg, wparam, lparam)
+    }
+}
+
+func Aura/Host/user32/message/box(hwnd: UInt64, body: UInt64, title: UInt64, style: UInt64) : UInt64 {
+    win {
+        return user32/MessageBoxA(hwnd,
+                                  cast<ptr<UInt8>>(body),
+                                  cast<ptr<UInt8>>(title),
+                                  style)
+    }
+}
+
+func Aura/Host/user32/set/timer(hwnd: UInt64, timer/id: UInt64, timer/ms: UInt64, callback: UInt64) : UInt64 {
+    win {
+        return user32/SetTimer(hwnd, timer/id, timer/ms, callback)
+    }
+}
+
+func Aura/Host/user32/kill/timer(hwnd: UInt64, timer/id: UInt64) : UInt64 {
+    win {
+        return user32/KillTimer(hwnd, timer/id)
+    }
+}
+
+func Aura/Host/gdi32/create/font(height: Int32,
+                                 width: Int32,
+                                 escapement: Int32,
+                                 orientation: Int32,
+                                 weight: Int32,
+                                 italic: UInt64,
+                                 underline: UInt64,
+                                 strike/out: UInt64,
+                                 charset: UInt64,
+                                 out/precision: UInt64,
+                                 clip/precision: UInt64,
+                                 quality: UInt64,
+                                 pitch/family: UInt64,
+                                 face/name: UInt64) : UInt64 {
+    win {
+        return gdi32/CreateFontA(height,
+                                 width,
+                                 escapement,
+                                 orientation,
+                                 weight,
+                                 italic,
+                                 underline,
+                                 strike/out,
+                                 charset,
+                                 out/precision,
+                                 clip/precision,
+                                 quality,
+                                 pitch/family,
+                                 cast<ptr<UInt8>>(face/name))
+    }
+}
+
+func Aura/Host/user32/set/window/text(hwnd: UInt64, title: UInt64) : UInt64 {
+    win {
+        return user32/SetWindowTextA(hwnd, cast<ptr<UInt8>>(title))
+    }
+}
+
+func Aura/Host/apply/glass/frame(hwnd: UInt64) : UInt64 {
+    // 1. Enable Immersive Dark Mode
+    var dark/mode: Int32 = 1
+    Aura/Host/dwm/set/window/attribute(hwnd,
+                                       Aura/Host/DWMWA/USE/IMMERSIVE/DARK/MODE,
+                                       cast<UInt64>(&dark/mode),
+                                       4)
+    
+    // 2. Enable Windows 11 Mica Backdrop (Liquid Glass)
+    var mica/type: Int32 = Aura/Host/DWMSBT/MAINWINDOW
+    Aura/Host/dwm/set/window/attribute(hwnd,
+                                       Aura/Host/DWMWA/SYSTEMBACKDROP/TYPE,
+                                       cast<UInt64>(&mica/type),
+                                       4)
+    
+    // 3. Force Elegant Rounded Corners
+    var corners: Int32 = Aura/Host/DWMWCP/ROUND
+    Aura/Host/dwm/set/window/attribute(hwnd,
+                                       Aura/Host/DWMWA/WINDOW/CORNER/PREFERENCE,
+                                       cast<UInt64>(&corners),
+                                       4)
+    
+    // 4. Extend Frame to allow Mica to bleed into client area
+    var margins: Aura/Host/Margins
+    margins\cxLeftWidth = -1
+    margins\cxRightWidth = -1
+    margins\cyTopHeight = -1
+    margins\cyBottomHeight = -1
+    Aura/Host/dwm/extend/frame(hwnd, cast<UInt64>(&margins))
+    return hwnd
 }
 
 func Aura/Host/class/init(target: ptr<Aura/Host/WndClassA>, class/name: UInt64, wndproc: UInt64) : UInt64 {
@@ -59,11 +293,14 @@ func Aura/Host/class/init(target: ptr<Aura/Host/WndClassA>, class/name: UInt64, 
     target\cbWndExtra = 0
     target\hInstance = Aura/Host/current/module()
     target\hIcon = 0
-    target\hCursor = cast<UInt64>(win/LoadCursorA(0, Aura/Host/CURSOR/ARROW))
-    target\hbrBackground = 6
+    target\hCursor = Aura/Host/user32/load/cursor(0, Aura/Host/CURSOR/ARROW)
+    
+    // Base window background set to deeply transparent/dark brush to let Mica show through
+    target\hbrBackground = Aura/Host/gdi32/create/solid/brush(Aura/Theme/Color/DeepAbyss)
+    
     target\lpszMenuName = 0
     target\lpszClassName = class/name
-    return cast<UInt64>(win/RegisterClassA(target))
+    return Aura/Host/user32/register/class(target)
 }
 
 func Aura/Host/window/create(ex/style: UInt64,
@@ -77,23 +314,23 @@ func Aura/Host/window/create(ex/style: UInt64,
                               parent: UInt64,
                               menu: UInt64,
                               param: UInt64) : UInt64 {
-    return cast<UInt64>(win/CreateWindowExA(ex/style,
-                                            cast<ptr<UInt8>>(class/name),
-                                            cast<ptr<UInt8>>(window/title),
-                                            style,
-                                            x,
-                                            y,
-                                            width,
-                                            height,
-                                            parent,
-                                            menu,
-                                            Aura/Host/current/module(),
-                                            param))
+    return Aura/Host/user32/create/window/ex(ex/style,
+                                             class/name,
+                                             window/title,
+                                             style,
+                                             x,
+                                             y,
+                                             width,
+                                             height,
+                                             parent,
+                                             menu,
+                                             Aura/Host/current/module(),
+                                             param)
 }
 
 func Aura/Host/window/show(hwnd: UInt64) : UInt64 {
-    win/ShowWindow(hwnd, Aura/Host/SHOW/DEFAULT)
-    win/UpdateWindow(hwnd)
+    Aura/Host/user32/show/window(hwnd, Aura/Host/SHOW/DEFAULT)
+    Aura/Host/user32/update/window(hwnd)
     return hwnd
 }
 
@@ -104,23 +341,57 @@ func Aura/Host/window/show/if(hwnd: UInt64) : UInt64 {
     return hwnd
 }
 
+func Aura/Host/window/set/font(hwnd: UInt64, font/handle: UInt64) : UInt64 {
+    Aura/Host/user32/send/message(hwnd, Aura/Host/WM/SETFONT, font/handle, 1)
+    return hwnd
+}
+
 func Aura/Host/create/label(parent: UInt64,
                             title: UInt64,
                             x: Int32,
                             y: Int32,
                             width: Int32,
                             height: Int32) : UInt64 {
-    return Aura/Host/window/create(0,
-                                   cast<UInt64>("STATIC"),
-                                   title,
-                                   Aura/Host/WS/CHILD/VISIBLE,
-                                   x,
-                                   y,
-                                   width,
-                                   height,
-                                   parent,
-                                   0,
-                                   0)
+    let hwnd: UInt64 = Aura/Host/window/create(0,
+                                               cast<UInt64>("STATIC"),
+                                               title,
+                                               Aura/Host/WS/CHILD/VISIBLE,
+                                               x,
+                                               y,
+                                               width,
+                                               height,
+                                               parent,
+                                               0,
+                                               0)
+    let font: UInt64 = Aura/Host/user32/get/prop(parent, cast<UInt64>("AuraTheme_FontBody"))
+    if font != 0 {
+        Aura/Host/window/set/font(hwnd, font)
+    }
+    return hwnd
+}
+
+func Aura/Host/create/label/mono(parent: UInt64,
+                                 title: UInt64,
+                                 x: Int32,
+                                 y: Int32,
+                                 width: Int32,
+                                 height: Int32) : UInt64 {
+    let hwnd: UInt64 = Aura/Host/window/create(0,
+                                               cast<UInt64>("STATIC"),
+                                               title,
+                                               Aura/Host/WS/CHILD/VISIBLE,
+                                               x,
+                                               y,
+                                               width,
+                                               height,
+                                               parent,
+                                               0,
+                                               0)
+    let font: UInt64 = Aura/Host/user32/get/prop(parent, cast<UInt64>("AuraTheme_FontMono"))
+    if font != 0 {
+        Aura/Host/window/set/font(hwnd, font)
+    }
+    return hwnd
 }
 
 func Aura/Host/create/panel(parent: UInt64,
@@ -129,17 +400,20 @@ func Aura/Host/create/panel(parent: UInt64,
                             y: Int32,
                             width: Int32,
                             height: Int32) : UInt64 {
-    return Aura/Host/window/create(0,
-                                   cast<UInt64>("STATIC"),
-                                   title,
-                                   Aura/Host/ACCENT/PANEL,
-                                   x,
-                                   y,
-                                   width,
-                                   height,
-                                   parent,
-                                   0,
-                                   0)
+    let hwnd: UInt64 = Aura/Host/window/create(0,
+                                               cast<UInt64>("STATIC"),
+                                               title,
+                                               Aura/Host/ACCENT/PANEL,
+                                               x,
+                                               y,
+                                               width,
+                                               height,
+                                               parent,
+                                               0,
+                                               0)
+    // Mark as custom panel to intercept background color in wndproc
+    Aura/Host/user32/set/prop(hwnd, cast<UInt64>("AuraTheme_Panel"), 1)
+    return hwnd
 }
 
 func Aura/Host/create/surface(parent: UInt64,
@@ -148,17 +422,39 @@ func Aura/Host/create/surface(parent: UInt64,
                               y: Int32,
                               width: Int32,
                               height: Int32) : UInt64 {
-    return Aura/Host/window/create(0,
-                                   cast<UInt64>("STATIC"),
-                                   title,
-                                   Aura/Host/ACCENT/PANEL,
-                                   x,
-                                   y,
-                                   width,
-                                   height,
-                                   parent,
-                                   0,
-                                   0)
+    let hwnd: UInt64 = Aura/Host/window/create(0,
+                                               cast<UInt64>("STATIC"),
+                                               title,
+                                               Aura/Host/ACCENT/PANEL,
+                                               x,
+                                               y,
+                                               width,
+                                               height,
+                                               parent,
+                                               0,
+                                               0)
+    Aura/Host/user32/set/prop(hwnd, cast<UInt64>("AuraTheme_Surface"), 1)
+    return hwnd
+}
+
+func Aura/Host/create/divider(parent: UInt64,
+                              x: Int32,
+                              y: Int32,
+                              width: Int32,
+                              height: Int32) : UInt64 {
+    let hwnd: UInt64 = Aura/Host/window/create(0,
+                                               cast<UInt64>("STATIC"),
+                                               cast<UInt64>(" "),
+                                               Aura/Host/WS/CHILD/VISIBLE,
+                                               x,
+                                               y,
+                                               width,
+                                               height,
+                                               parent,
+                                               0,
+                                               0)
+    Aura/Host/user32/set/prop(hwnd, cast<UInt64>("AuraTheme_Divider"), 1)
+    return hwnd
 }
 
 func Aura/Host/create/titlebar(parent: UInt64,
@@ -168,87 +464,84 @@ func Aura/Host/create/titlebar(parent: UInt64,
                                width: Int32) : UInt64 {
     chrome\title/bar = Aura/Host/create/panel(parent,
                                               cast<UInt64>(" "),
-                                              18,
-                                              18,
+                                              0,
+                                              0,
                                               width,
-                                              74)
+                                              64)
     chrome\title/text = Aura/Host/create/label(parent,
                                                title,
-                                               36,
-                                               34,
-                                               width - 72,
-                                               22)
-    chrome\state/text = Aura/Host/create/label(parent,
-                                               state,
-                                               36,
-                                               58,
-                                               width - 220,
-                                               18)
-    chrome\glow/strip = Aura/Host/create/panel(parent,
-                                               cast<UInt64>(" "),
-                                               width - 162,
-                                               34,
-                                               120,
-                                               12)
-    chrome\signal/text = Aura/Host/create/label(parent,
-                                                cast<UInt64>("liquid glass / source merged / nt host"),
-                                                width - 162,
-                                                52,
-                                                120,
-                                                16)
+                                               24,
+                                               22,
+                                               width - 300,
+                                               24)
+    let font/title: UInt64 = Aura/Host/user32/get/prop(parent, cast<UInt64>("AuraTheme_FontTitle"))
+    Aura/Host/window/set/font(chrome\title/text, font/title)
+
+    chrome\state/text = Aura/Host/create/label/mono(parent,
+                                                    state,
+                                                    width - 400,
+                                                    26,
+                                                    376,
+                                                    18)
+    
+    // Bottom border for the title bar
+    chrome\divider = Aura/Host/create/divider(parent, 0, 63, width, 1)
+
     Aura/Host/window/show/if(chrome\title/bar)
     Aura/Host/window/show/if(chrome\title/text)
     Aura/Host/window/show/if(chrome\state/text)
-    Aura/Host/window/show/if(chrome\glow/strip)
-    Aura/Host/window/show/if(chrome\signal/text)
+    Aura/Host/window/show/if(chrome\divider)
     return chrome\title/bar
 }
 
-func Aura/Host/create/statusbar(parent: UInt64,
-                                left: UInt64,
-                                right: UInt64,
-                                width: Int32,
-                                height: Int32) : UInt64 {
-    let bar: UInt64 = Aura/Host/create/panel(parent,
-                                             cast<UInt64>(" "),
-                                             18,
-                                             height - 44,
-                                             width,
-                                             24)
-    let left/label: UInt64 = Aura/Host/create/label(parent,
-                                                    left,
-                                                    30,
-                                                    height - 42,
-                                                    width - 280,
-                                                    18)
-    let right/label: UInt64 = Aura/Host/create/label(parent,
-                                                     right,
-                                                     width - 230,
-                                                     height - 42,
-                                                     190,
-                                                     18)
-    Aura/Host/window/show/if(bar)
-    Aura/Host/window/show/if(left/label)
-    Aura/Host/window/show/if(right/label)
-    return bar
-}
-
 func Aura/Host/message/pump(msg: ptr<Aura/Host/Msg>) : UInt64 {
-    while win/GetMessageA(msg, 0, 0, 0) > 0 {
-        win/TranslateMessage(msg)
-        win/DispatchMessageA(msg)
+    while Aura/Host/user32/get/message(msg, 0, 0, 0) > 0 {
+        Aura/Host/user32/translate/message(msg)
+        Aura/Host/user32/dispatch/message(msg)
     }
     return cast<UInt64>(msg\message)
 }
 
 func Aura/Host/wndproc/default(hwnd: UInt64, msg: UInt32, wparam: UInt64, lparam: Int64) : Int64 {
     if msg == Aura/Host/WM/CLOSE {
-        win/PostQuitMessage(0)
+        Aura/Host/user32/post/quit(0)
         return 0
     }
     if msg == Aura/Host/WM/DESTROY {
-        win/PostQuitMessage(0)
+        Aura/Host/user32/post/quit(0)
         return 0
     }
-    return cast<Int64>(win/DefWindowProcA(hwnd, msg, wparam, lparam))
+    
+    // Industrial Theming Engine: Intercept Static Control Rendering
+    if msg == Aura/Host/WM/CTLCOLORSTATIC {
+        let hdc: UInt64 = wparam
+        let hwnd/child: UInt64 = cast<UInt64>(lparam)
+        
+        Aura/Host/gdi32/set/bk/mode(hdc, Aura/Host/TRANSPARENT/MODE)
+        
+        let is/divider: UInt64 = Aura/Host/user32/get/prop(hwnd/child, cast<UInt64>("AuraTheme_Divider"))
+        if is/divider != 0 {
+            return cast<Int64>(Aura/Host/user32/get/prop(hwnd, cast<UInt64>("AuraBrush_Divider")))
+        }
+
+        let is/surface: UInt64 = Aura/Host/user32/get/prop(hwnd/child, cast<UInt64>("AuraTheme_Surface"))
+        if is/surface != 0 {
+            Aura/Host/gdi32/set/text/color(hdc, Aura/Theme/Color/TextPrimary)
+            return cast<Int64>(Aura/Host/user32/get/prop(hwnd, cast<UInt64>("AuraBrush_Surface")))
+        }
+        
+        let is/panel: UInt64 = Aura/Host/user32/get/prop(hwnd/child, cast<UInt64>("AuraTheme_Panel"))
+        if is/panel != 0 {
+            Aura/Host/gdi32/set/text/color(hdc, Aura/Theme/Color/TextSecondary)
+            return cast<Int64>(Aura/Host/user32/get/prop(hwnd, cast<UInt64>("AuraBrush_Rail")))
+        }
+
+        // Default Label coloring based on position heuristics or raw text nature
+        Aura/Host/gdi32/set/text/color(hdc, Aura/Theme/Color/TextPrimary)
+        
+        // Return Hollow/Null Brush so the text renders perfectly on top of the liquid glass background
+        return cast<Int64>(Aura/Host/gdi32/get/stock/object(5))
+    }
+
+    return Aura/Host/user32/def/window/proc(hwnd, msg, wparam, lparam)
 }

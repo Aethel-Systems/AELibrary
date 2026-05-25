@@ -1,10 +1,63 @@
+// -----------------------------------------------------------------------------
+// Aura Runtime / Core Definitions & Telemetry
+// Architecture: Win32 Host / Native GDI / DWM Orchestration
+// -----------------------------------------------------------------------------
+
 let Aura/Host/ALERT/ICON/ERROR = 0x10
 
+// --- DWM & Liquid Glass (Mica) Constants ---
+let Aura/Host/DWMWA/USE/IMMERSIVE/DARK/MODE = 20
+let Aura/Host/DWMWA/WINDOW/CORNER/PREFERENCE = 33
+let Aura/Host/DWMWA/SYSTEMBACKDROP/TYPE = 38
+let Aura/Host/DWMSBT/MAINWINDOW = 2
+let Aura/Host/DWMWCP/ROUND = 2
+
+// --- GDI & Window Messages ---
+let Aura/Host/WM/PAINT = 0x000F
+let Aura/Host/WM/ERASEBKGND = 0x0014
+let Aura/Host/WM/SETFONT = 0x0030
+let Aura/Host/WM/CTLCOLORMSGBOX = 0x0132
+let Aura/Host/WM/CTLCOLOREDIT = 0x0133
+let Aura/Host/WM/CTLCOLORLISTBOX = 0x0134
+let Aura/Host/WM/CTLCOLORBTN = 0x0135
+let Aura/Host/WM/CTLCOLORDLG = 0x0136
+let Aura/Host/WM/CTLCOLORSCROLLBAR = 0x0137
+let Aura/Host/WM/CTLCOLORSTATIC = 0x0138
+
+// --- GDI Color Formatting (0x00BBGGRR) ---
+let Aura/Theme/Color/DeepAbyss = 0x00131111     // Background Canvas
+let Aura/Theme/Color/GlassSurface = 0x001D1A1A  // Elevated Panels
+let Aura/Theme/Color/RailSurface = 0x00171515   // Side Navigation
+let Aura/Theme/Color/BorderSubtle = 0x00332D2D  // Dividers
+let Aura/Theme/Color/TextPrimary = 0x00FAFAFA   // High Contrast White
+let Aura/Theme/Color/TextSecondary = 0x00908888 // Muted Gray/Steel
+let Aura/Theme/Color/TextAccent = 0x00D6A74B    // Industrial Cyan (BGR)
+let Aura/Theme/Color/TextWarning = 0x004050D0   // Amber/Orange (BGR)
+
+let Aura/Host/TRANSPARENT/MODE = 1
+
+struct Aura/Host/Margins {
+    cxLeftWidth: Int32
+    cxRightWidth: Int32
+    cyTopHeight: Int32
+    cyBottomHeight: Int32
+}
+
+struct Aura/Theme/Palette {
+    brush/background: UInt64
+    brush/surface: UInt64
+    brush/rail: UInt64
+    font/title: UInt64
+    font/body: UInt64
+    font/mono: UInt64
+    font/beacon: UInt64
+}
+
 func Aura/Host/alert/error(title: UInt64, body: UInt64) : UInt64 {
-    return cast<UInt64>(win/MessageBoxA(0,
-                                        cast<ptr<UInt8>>(body),
-                                        cast<ptr<UInt8>>(title),
-                                        Aura/Host/ALERT/ICON/ERROR))
+    return Aura/Host/user32/message/box(0,
+                                        body,
+                                        title,
+                                        Aura/Host/ALERT/ICON/ERROR)
 }
 
 func Aura/Host/ensure/nonzero(value: UInt64, title: UInt64, body: UInt64, code: UInt64) : UInt64 {
@@ -16,13 +69,13 @@ func Aura/Host/ensure/nonzero(value: UInt64, title: UInt64, body: UInt64, code: 
 }
 
 func Aura/Host/run/loop(msg: ptr<Aura/Host/Msg>, hwnd: UInt64, timer/id: UInt64, timer/ms: UInt64) : UInt64 {
-    let timer: UInt64 = win/SetTimer(hwnd, timer/id, timer/ms, 0)
+    let timer: UInt64 = Aura/Host/user32/set/timer(hwnd, timer/id, timer/ms, 0)
     if timer == 0 {
         Aura/Host/alert/error(cast<UInt64>("Aura Host Timer Failure"),
                               cast<UInt64>("SetTimer returned zero before the GUI loop could begin."))
         return 21
     }
     Aura/Host/message/pump(msg)
-    win/KillTimer(hwnd, timer/id)
+    Aura/Host/user32/kill/timer(hwnd, timer/id)
     return 0
 }

@@ -1,0 +1,74 @@
+struct Flux/Metric/Card {
+    frame: Flux/Rect
+    surface: UInt64
+    title: UInt64
+    value: UInt64
+    detail: UInt64
+    accent: UInt64
+}
+
+func Flux/Metric/create(parent: UInt64,
+                        target: ptr<Flux/Metric/Card>,
+                        title: UInt64,
+                        value: UInt64,
+                        detail: UInt64,
+                        rect: ptr<Flux/Rect>) : UInt64 {
+    let title/frame: Flux/Rect
+    let value/frame: Flux/Rect
+    let detail/frame: Flux/Rect
+    let accent/frame: Flux/Rect
+
+    Flux/Rect/set(&target\frame, rect\x, rect\y, rect\width, rect\height)
+    target\surface = Aura/Host/create/surface(parent,
+                                              cast<UInt64>(" "),
+                                              rect\x,
+                                              rect\y,
+                                              rect\width,
+                                              rect\height)
+    Flux/Rect/set(&title/frame, rect\x + 20, rect\y + 18, rect\width - 40, 18)
+    Flux/Rect/set(&value/frame, rect\x + 20, rect\y + 46, rect\width - 40, 20)
+    Flux/Rect/set(&detail/frame, rect\x + 20, rect\y + rect\height - 38, rect\width - 40, 18)
+    Flux/Rect/set(&accent/frame, rect\x + 20, rect\y + rect\height - 16, rect\width - 40, 6)
+
+    target\title = Aura/Host/create/label/mono(parent,
+                                               title,
+                                               title/frame\x,
+                                               title/frame\y,
+                                               title/frame\width,
+                                               title/frame\height)
+    target\value = Aura/Host/create/label(parent,
+                                          value,
+                                          value/frame\x,
+                                          value/frame\y,
+                                          value/frame\width,
+                                          value/frame\height)
+    target\detail = Aura/Host/create/label(parent,
+                                           detail,
+                                           detail/frame\x,
+                                           detail/frame\y,
+                                           detail/frame\width,
+                                           detail/frame\height)
+    target\accent = Aura/Host/create/panel(parent,
+                                           cast<UInt64>(" "),
+                                           accent/frame\x,
+                                           accent/frame\y,
+                                           accent/frame\width,
+                                           accent/frame\height)
+
+    Aura/Host/window/show/if(target\surface)
+    Aura/Host/window/show/if(target\title)
+    Aura/Host/window/show/if(target\value)
+    Aura/Host/window/show/if(target\detail)
+    Aura/Host/window/show/if(target\accent)
+    return target\surface
+}
+
+func Flux/Metric/update/value(target: ptr<Flux/Metric/Card>, value: UInt64) : UInt64 {
+    Aura/Host/user32/set/window/text(target\value, value)
+    return target\value
+}
+
+func Flux/Metric/update/detail(target: ptr<Flux/Metric/Card>, detail: UInt64) : UInt64 {
+    Aura/Host/user32/set/window/text(target\detail, detail)
+    return target\detail
+}

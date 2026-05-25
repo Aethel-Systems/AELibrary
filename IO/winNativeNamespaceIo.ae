@@ -1,0 +1,229 @@
+struct Win/IO/Native/UnicodeString {
+    length: UInt16
+    maximum/length: UInt16
+    buffer: UInt64
+}
+
+struct Win/IO/Native/UnicodeBuffer260 {
+    chars: [260]UInt16
+}
+
+struct Win/IO/Native/UnicodeBuffer520 {
+    chars: [520]UInt16
+}
+
+struct Win/IO/Native/ObjectAttributes {
+    length: UInt64
+    root/directory: UInt64
+    object/name: UInt64
+    attributes: UInt64
+    security/descriptor: UInt64
+    security/qos: UInt64
+}
+
+struct Win/IO/Native/IoStatusBlock {
+    status: UInt64
+    information: UInt64
+}
+
+struct Win/IO/Native/ObjectDirectoryArena {
+    bytes: [4096]UInt8
+}
+
+struct Win/IO/Native/FileDirectoryArena {
+    bytes: [4096]UInt8
+}
+
+let Win/IO/Native/STATUS/SUCCESS = 0
+let Win/IO/Native/OBJ/CASE/INSENSITIVE = 0x40
+let Win/IO/Native/DIRECTORY/QUERY = 0x0001
+let Win/IO/Native/SYMBOLIC/LINK/QUERY = 0x0001
+let Win/IO/Native/FILE/LIST/DIRECTORY = 0x0001
+let Win/IO/Native/FILE/READ/ATTRIBUTES = 0x0080
+let Win/IO/Native/SYNCHRONIZE = 0x00100000
+let Win/IO/Native/FILE/SHARE/READ = 0x0001
+let Win/IO/Native/FILE/SHARE/WRITE = 0x0002
+let Win/IO/Native/FILE/SHARE/DELETE = 0x0004
+let Win/IO/Native/FILE/DIRECTORY/FILE = 0x0001
+let Win/IO/Native/FILE/SYNCHRONOUS/IO/NONALERT = 0x0020
+let Win/IO/Native/FILE/OPEN/FOR/BACKUP/INTENT = 0x4000
+let Win/IO/Native/FILE/OPEN/REPARSE/POINT = 0x00200000
+let Win/IO/Native/FILE/DIRECTORY/INFORMATION = 1
+
+func Win/IO/Native/ascii/length(text: UInt64) : UInt64 {
+    let count: UInt64 = 0
+    let view: ptr<UInt8> = cast<ptr<UInt8>>(text)
+    while view[count] != 0 {
+        count = count + 1
+    }
+    return count
+}
+
+func Win/IO/Native/unicode/init/ascii(target: ptr<Win/IO/Native/UnicodeString>,
+                                      storage: ptr<Win/IO/Native/UnicodeBuffer520>,
+                                      text: UInt64) : UInt64 {
+    let index: UInt64 = 0
+    let source: ptr<UInt8> = cast<ptr<UInt8>>(text)
+
+    while source[index] != 0 {
+        if index >= 519 {
+            break
+        }
+        storage\chars[index] = source[index] as UInt16
+        index = index + 1
+    }
+
+    storage\chars[index] = 0
+    target\length = cast<UInt16>(index * 2)
+    target\maximum/length = cast<UInt16>((index * 2) + 2)
+    target\buffer = cast<UInt64>(&storage\chars[0])
+    return cast<UInt64>(target)
+}
+
+func Win/IO/Native/unicode/init/ascii260(target: ptr<Win/IO/Native/UnicodeString>,
+                                         storage: ptr<Win/IO/Native/UnicodeBuffer260>,
+                                         text: UInt64) : UInt64 {
+    let index: UInt64 = 0
+    let source: ptr<UInt8> = cast<ptr<UInt8>>(text)
+
+    while source[index] != 0 {
+        if index >= 259 {
+            break
+        }
+        storage\chars[index] = source[index] as UInt16
+        index = index + 1
+    }
+
+    storage\chars[index] = 0
+    target\length = cast<UInt16>(index * 2)
+    target\maximum/length = cast<UInt16>((index * 2) + 2)
+    target\buffer = cast<UInt64>(&storage\chars[0])
+    return cast<UInt64>(target)
+}
+
+func Win/IO/Native/unicode/reset/buffer520(target: ptr<Win/IO/Native/UnicodeString>,
+                                           storage: ptr<Win/IO/Native/UnicodeBuffer520>) : UInt64 {
+    storage\chars[0] = 0
+    target\length = 0
+    target\maximum/length = 1040
+    target\buffer = cast<UInt64>(&storage\chars[0])
+    return cast<UInt64>(target)
+}
+
+func Win/IO/Native/object/init(target: ptr<Win/IO/Native/ObjectAttributes>,
+                               name: ptr<Win/IO/Native/UnicodeString>,
+                               attrs: UInt64,
+                               root/directory: UInt64) : UInt64 {
+    target\length = 48
+    target\root/directory = root/directory
+    target\object/name = cast<UInt64>(name)
+    target\attributes = attrs
+    target\security/descriptor = 0
+    target\security/qos = 0
+    return cast<UInt64>(target)
+}
+
+func Win/IO/Native/nt/success(status: UInt64) : UInt64 {
+    if cast<Int64>(status) >= 0 {
+        return 1
+    }
+    return 0
+}
+
+func Win/IO/Native/handle/close(handle: UInt64) : UInt64 {
+    win {
+        return NtClose(handle)
+    }
+}
+
+func Win/IO/Native/privilege/enable(privilege: UInt64,
+                                    current/thread: UInt64,
+                                    previous/out: UInt64) : UInt64 {
+    win {
+        return RtlAdjustPrivilege(privilege, 1, current/thread, previous/out)
+    }
+}
+
+func Win/IO/Native/object/directory/open(handle/out: UInt64,
+                                         desired/access: UInt64,
+                                         attrs: ptr<Win/IO/Native/ObjectAttributes>) : UInt64 {
+    win {
+        return NtOpenDirectoryObject(handle/out, desired/access, attrs)
+    }
+}
+
+func Win/IO/Native/object/directory/query(handle: UInt64,
+                                          arena: ptr<Win/IO/Native/ObjectDirectoryArena>,
+                                          arena/size: UInt64,
+                                          single/entry: UInt64,
+                                          restart/scan: UInt64,
+                                          context: UInt64,
+                                          return/length: UInt64) : UInt64 {
+    win {
+        return NtQueryDirectoryObject(handle,
+                                      arena,
+                                      arena/size,
+                                      single/entry,
+                                      restart/scan,
+                                      context,
+                                      return/length)
+    }
+}
+
+func Win/IO/Native/object/symbolic/open(handle/out: UInt64,
+                                        desired/access: UInt64,
+                                        attrs: ptr<Win/IO/Native/ObjectAttributes>) : UInt64 {
+    win {
+        return NtOpenSymbolicLinkObject(handle/out, desired/access, attrs)
+    }
+}
+
+func Win/IO/Native/object/symbolic/query(handle: UInt64,
+                                         target: ptr<Win/IO/Native/UnicodeString>,
+                                         return/length: UInt64) : UInt64 {
+    win {
+        return NtQuerySymbolicLinkObject(handle, target, return/length)
+    }
+}
+
+func Win/IO/Native/file/open(handle/out: UInt64,
+                             desired/access: UInt64,
+                             attrs: ptr<Win/IO/Native/ObjectAttributes>,
+                             io/status: ptr<Win/IO/Native/IoStatusBlock>,
+                             share/access: UInt64,
+                             open/options: UInt64) : UInt64 {
+    win {
+        return NtOpenFile(handle/out,
+                          desired/access,
+                          attrs,
+                          io/status,
+                          share/access,
+                          open/options)
+    }
+}
+
+func Win/IO/Native/file/query/directory(handle: UInt64,
+                                        event: UInt64,
+                                        apc/routine: UInt64,
+                                        apc/context: UInt64,
+                                        io/status: ptr<Win/IO/Native/IoStatusBlock>,
+                                        arena: ptr<Win/IO/Native/FileDirectoryArena>,
+                                        arena/size: UInt64,
+                                        info/class: UInt64,
+                                        single/entry: UInt64,
+                                        file/name: UInt64,
+                                        restart/scan: UInt64) : UInt64 {
+    win {
+        return NtQueryDirectoryFile(handle,
+                                    event,
+                                    apc/routine,
+                                    apc/context,
+                                    io/status,
+                                    arena,
+                                    arena/size,
+                                    info/class,
+                                    single/entry,
+                                    file/name,
+                                    restart/scan)
+    }
+}
