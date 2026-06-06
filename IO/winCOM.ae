@@ -1,0 +1,42 @@
+// -----------------------------------------------------------------------------
+// Win/COM - Component Object Model Native Definitions
+// -----------------------------------------------------------------------------
+
+struct COM/GUID {
+    data1: UInt32
+    data2: UInt16
+    data3: UInt16
+    data4: [8]UInt8
+}
+
+func COM/GUID/init(guid: ptr<COM/GUID>, d1: UInt32, d2: UInt16, d3: UInt16,
+                   b0: UInt8, b1: UInt8, b2: UInt8, b3: UInt8,
+                   b4: UInt8, b5: UInt8, b6: UInt8, b7: UInt8): Void {
+    guid\data1 = d1
+    guid\data2 = d2
+    guid\data3 = d3
+    guid\data4[0] = b0
+    guid\data4[1] = b1
+    guid\data4[2] = b2
+    guid\data4[3] = b3
+    guid\data4[4] = b4
+    guid\data4[5] = b5
+    guid\data4[6] = b6
+    guid\data4[7] = b7
+}
+
+// 动态通过 win 块加载 ole32.dll 并执行
+func Win/COM/CoInitializeEx(reserved: UInt64, coinit: UInt32): UInt32 {
+    win { return ole32/CoInitializeEx(reserved, cast<UInt64>(coinit)) as UInt32 }
+}
+
+func Win/COM/CoCreateInstance(rclsid: ptr<COM/GUID>, pUnkOuter: UInt64, dwClsContext: UInt32, riid: ptr<COM/GUID>, ppv: ptr<UInt64>): UInt32 {
+    win { return ole32/CoCreateInstance(cast<UInt64>(rclsid), pUnkOuter, cast<UInt64>(dwClsContext), cast<UInt64>(riid), cast<UInt64>(ppv)) as UInt32 }
+}
+
+// IUnknown Base Release
+func COM/IUnknown/Release(this: UInt64): UInt32 {
+    let vtable: ptr<UInt64> = cast<ptr<UInt64>>(cast<ptr<UInt64>>(this)[0])
+    let release/func: UInt64 = vtable[2]
+    return Win/ABI/invoke1(release/func, this) as UInt32
+}

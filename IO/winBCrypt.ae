@@ -1,0 +1,74 @@
+// -----------------------------------------------------------------------------
+// Win/Net - Winsock2 Core Wrappers
+// -----------------------------------------------------------------------------
+
+@packed
+struct Win/Net/WSAData {
+    version: UInt16
+    high/version: UInt16
+    description: [257]UInt8
+    system/status: [129]UInt8
+    max/sockets: UInt16
+    max/udp/dg: UInt16
+    vendor/info: UInt64
+}
+
+@packed
+struct Win/Net/AddrInfo {
+    flags: Int32
+    family: Int32
+    socktype: Int32
+    protocolr: Int32
+    addr/len: UInt64
+    canon/name: UInt64
+    addr: UInt64
+    next: UInt64
+}
+
+@packed
+struct Win/Net/SockAddr/In {
+    family: Int16
+    port: UInt16
+    address: UInt32
+    zero: [8]UInt8
+}
+
+let Win/Net/AF/INET: Int32 = 2
+let Win/Net/SOCK/STREAM: Int32 = 1
+let Win/Net/IPPROTO/TCP: Int32 = 6
+
+func Win/Net/WSAStartup(version/requested: UInt16, data: ptr<Win/Net/WSAData>): Int32 {
+    win { return ws2/WSAStartup(version/requested as UInt64, cast<UInt64>(data)) as Int32 }
+}
+
+func Win/Net/WSACleanup(): Int32 {
+    win { return ws2/WSACleanup() as Int32 }
+}
+
+func Win/Net/socket(af: Int32, type: Int32, protocolr: Int32): UInt64 {
+    win { return ws2/socket(af as UInt64, type as UInt64, protocolr as UInt64) }
+}
+
+func Win/Net/connect(s: UInt64, name: UInt64, namelen: Int32): Int32 {
+    win { return ws2/connect(s, name, namelen as UInt64) as Int32 }
+}
+
+func Win/Net/send(s: UInt64, buf: UInt64, len: Int32, flags: Int32): Int32 {
+    win { return ws2/send(s, buf, len as UInt64, flags as UInt64) as Int32 }
+}
+
+func Win/Net/recv(s: UInt64, buf: UInt64, len: Int32, flags: Int32): Int32 {
+    win { return ws2/recv(s, buf, len as UInt64, flags as UInt64) as Int32 }
+}
+
+func Win/Net/closesocket(s: UInt64): Int32 {
+    win { return ws2/closesocket(s) as Int32 }
+}
+
+func Win/Net/GetAddrInfo(pNodeName: UInt64, pServiceName: UInt64, pHints: ptr<Win/Net/AddrInfo>, ppResult: ptr<ptr<Win/Net/AddrInfo>>): Int32 {
+    win { return ws2/getaddrinfo(pNodeName, pServiceName, cast<UInt64>(pHints), cast<UInt64>(ppResult)) as Int32 }
+}
+
+func Win/Net/FreeAddrInfo(pAddrInfo: ptr<Win/Net/AddrInfo>): Void {
+    win { ws2/freeaddrinfo(cast<UInt64>(pAddrInfo)) }
+}

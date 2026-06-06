@@ -102,6 +102,8 @@ func Flux/UI/Spacer() : ptr<Flux/UI/Node> {
 
 // Layout Engine
 func Flux/UI/ComputeLayout(node: ptr<Flux/UI/Node>, x: Int32, y: Int32, w: Int32, h: Int32) : UInt64 {
+    if cast<UInt64>(node) == 0 { return 0 }
+    
     node\x = x
     node\y = y
     node\w = w
@@ -119,6 +121,7 @@ func Flux/UI/ComputeLayout(node: ptr<Flux/UI/Node>, x: Int32, y: Int32, w: Int32
         let i: Int32 = 0
         while i < node\child/count {
             let arr: ptr<UInt64> = node\children
+            let child: ptr<Flux/UI/Node> = cast<ptr<Flux/UI/Node>>(arr[i])
             if child\flex/grow > 0 {
                 total/grow = total/grow + child\flex/grow
             } else {
@@ -134,6 +137,7 @@ func Flux/UI/ComputeLayout(node: ptr<Flux/UI/Node>, x: Int32, y: Int32, w: Int32
         i = 0
         while i < node\child/count {
             let arr: ptr<UInt64> = node\children
+            let child: ptr<Flux/UI/Node> = cast<ptr<Flux/UI/Node>>(arr[i])
             let child/h: Int32 = 30
             if child\flex/grow > 0 {
                 child/h = (remaining/h * child\flex/grow) ÷ total/grow
@@ -149,6 +153,7 @@ func Flux/UI/ComputeLayout(node: ptr<Flux/UI/Node>, x: Int32, y: Int32, w: Int32
         let i: Int32 = 0
         while i < node\child/count {
             let arr: ptr<UInt64> = node\children
+            let child: ptr<Flux/UI/Node> = cast<ptr<Flux/UI/Node>>(arr[i])
             if child\flex/grow > 0 {
                 total/grow = total/grow + child\flex/grow
             } else {
@@ -164,6 +169,7 @@ func Flux/UI/ComputeLayout(node: ptr<Flux/UI/Node>, x: Int32, y: Int32, w: Int32
         i = 0
         while i < node\child/count {
             let arr: ptr<UInt64> = node\children
+            let child: ptr<Flux/UI/Node> = cast<ptr<Flux/UI/Node>>(arr[i])
             let child/w: Int32 = 100
             if child\flex/grow > 0 {
                 child/w = (remaining/w * child\flex/grow) ÷ total/grow
@@ -176,6 +182,7 @@ func Flux/UI/ComputeLayout(node: ptr<Flux/UI/Node>, x: Int32, y: Int32, w: Int32
         let i: Int32 = 0
         while i < node\child/count {
             let arr: ptr<UInt64> = node\children
+            let child: ptr<Flux/UI/Node> = cast<ptr<Flux/UI/Node>>(arr[i])
             Flux/UI/ComputeLayout(child, inner/x, inner/y, inner/w, inner/h)
             i = i + 1
         }
@@ -183,38 +190,51 @@ func Flux/UI/ComputeLayout(node: ptr<Flux/UI/Node>, x: Int32, y: Int32, w: Int32
     return 0
 }
 
-// Rendering Engine (using WinGdiAdvanced)
+struct Flux/GDI/Rect {
+    left: Int32
+    top: Int32
+    right: Int32
+    bottom: Int32
+}
+
+// Rendering Engine (using direct local Win32 resolving)
 func Flux/UI/RenderNode(hdc: UInt64, node: ptr<Flux/UI/Node>) : UInt64 {
+    if cast<UInt64>(node) == 0 { return 0 }
+    
     if node\type == FLUX/NODE/ROUNDEDRECT {
-        let brush: UInt64 = Win/GDI/CreateSolidBrush(node\bg/color)
-        let old/brush: UInt64 = Win/GDI/SelectObject(hdc, brush)
+        let brush: UInt64 = 0
+        win { brush = gdi32/CreateSolidBrush(node\bg/color) }
+        let old/brush: UInt64 = 0
+        win { old/brush = gdi32/SelectObject(hdc, brush) }
         
-        let pen: UInt64 = Win/GDI/CreatePen(5, 0, 0) // PS/NULL
-        let old/pen: UInt64 = Win/GDI/SelectObject(hdc, pen)
+        let pen: UInt64 = 0
+        win { pen = gdi32/CreatePen(5, 0, 0) } // PS_NULL (无边框)
+        let old/pen: UInt64 = 0
+        win { old/pen = gdi32/SelectObject(hdc, pen) }
         
-        Win/GDI/RoundRect(hdc, node\x, node\y, node\x + node\w, node\y + node\h, node\corner/radius, node\corner/radius)
+        win { gdi32/RoundRect(hdc, node\x, node\y, node\x + node\w, node\y + node\h, node\corner/radius, node\corner/radius) }
         
-        Win/GDI/SelectObject(hdc, old/brush)
-        Win/GDI/SelectObject(hdc, old/pen)
-        Win/GDI/DeleteObject(brush)
-        Win/GDI/DeleteObject(pen)
+        win { gdi32/SelectObject(hdc, old/brush) }
+        win { gdi32/SelectObject(hdc, old/pen) }
+        win { gdi32/DeleteObject(brush) }
+        win { gdi32/DeleteObject(pen) }
     } else if node\type == FLUX/NODE/TEXT {
         win { gdi32/SetBkMode(hdc, 1) } // TRANSPARENT
         win { gdi32/SetTextColor(hdc, node\text/color) }
         
-        let rect: Win/GDI/Rect
+        let rect: Flux/GDI/Rect
         rect\left = node\x
         rect\top = node\y
         rect\right = node\x + node\w
         rect\bottom = node\y + node\h
         
-        win { user32/DrawTextA(hdc, node\text/ptr, -1, &rect, 0x24) } // DT/CENTER | DT/VCENTER | DT/SINGLELINE
+        win { user32/DrawTextA(hdc, node\text/ptr, -1, &rect, 0x24) }
     }
     
-    // Draw children
     let i: Int32 = 0
     while i < node\child/count {
         let arr: ptr<UInt64> = node\children
+        let child: ptr<Flux/UI/Node> = cast<ptr<Flux/UI/Node>>(arr[i])
         Flux/UI/RenderNode(hdc, child)
         i = i + 1
     }
@@ -223,35 +243,49 @@ func Flux/UI/RenderNode(hdc: UInt64, node: ptr<Flux/UI/Node>) : UInt64 {
 }
 
 func Flux/UI/RenderNoRoot(hwnd: UInt64, NoRoot: ptr<Flux/UI/Node>, w: Int32, h: Int32) : UInt64 {
+    let ps: [72]UInt8
     let hdc: UInt64 = 0
-    win { hdc = user32/GetDC(hwnd) }
     
-    let mem/dc: UInt64 = Win/GDI/CreateCompatibleDC(hdc)
-    let mem/bmp: UInt64 = Win/GDI/CreateCompatibleBitmap(hdc, w, h)
-    let old/bmp: UInt64 = Win/GDI/SelectObject(mem/dc, mem/bmp)
+    win { hdc = user32/BeginPaint(hwnd, &ps) }
     
-    // Clear background
-    let bg/rect: Win/GDI/Rect
-    bg/rect\left = 0
-    bg/rect\top = 0
-    bg/rect\right = w
-    bg/rect\bottom = h
-    let bg/brush: UInt64 = Win/GDI/CreateSolidBrush(0x00131111) // Aura/Theme/Color/DeepAbyss
-    Win/GDI/FillRect(mem/dc, &bg/rect, bg/brush)
-    Win/GDI/DeleteObject(bg/brush)
-    
-    // Layout and render
-    Flux/UI/ComputeLayout(NoRoot, 0, 0, w, h)
-    Flux/UI/RenderNode(mem/dc, NoRoot)
-    
-    // BitBlt to screen
-    Win/GDI/BitBlt(hdc, 0, 0, w, h, mem/dc, 0, 0, 0x00CC0020) // SRCCOPY
-    
-    // Cleanup
-    Win/GDI/SelectObject(mem/dc, old/bmp)
-    Win/GDI/DeleteObject(mem/bmp)
-    Win/GDI/DeleteDC(mem/dc)
-    win { user32/ReleaseDC(hwnd, hdc) }
-    
+    if hdc != 0 {
+        if cast<UInt64>(NoRoot) != 0 {
+            // 【核心修正二】恢复双缓冲！不仅防闪烁，更为了生成 Alpha = 0 的画布
+            let mem/dc: UInt64 = 0
+            win { mem/dc = gdi32/CreateCompatibleDC(hdc) }
+            
+            let mem/bmp: UInt64 = 0
+            win { mem/bmp = gdi32/CreateCompatibleBitmap(hdc, w, h) }
+            
+            let old/bmp: UInt64 = 0
+            win { old/bmp = gdi32/SelectObject(mem/dc, mem/bmp) }
+            
+            // 魔法时刻：用“纯黑 (0x00000000)”清空内存画布。
+            // DWM 会将这层纯黑判定为“全透明玻璃”，从而透出背后的深色云母材质！
+            let bg/rect: Flux/GDI/Rect
+            bg/rect\left = 0
+            bg/rect\top = 0
+            bg/rect\right = w
+            bg/rect\bottom = h
+            
+            let bg/brush: UInt64 = 0
+            win { bg/brush = gdi32/CreateSolidBrush(0x00000000) }
+            win { user32/FillRect(mem/dc, &bg/rect, bg/brush) }
+            win { gdi32/DeleteObject(bg/brush) }
+            
+            // 绘制 UI 组件，字和图形会盖在纯黑画布上
+            Flux/UI/ComputeLayout(NoRoot, 0, 0, w, h)
+            Flux/UI/RenderNode(mem/dc, NoRoot)
+            
+            // SRCCOPY 把合成好的画面拍到屏幕上
+            win { gdi32/BitBlt(hdc, 0, 0, w, h, mem/dc, 0, 0, 0x00CC0020) }
+            
+            // 释放 GDI 对象，拒绝内存泄漏
+            win { gdi32/SelectObject(mem/dc, old/bmp) }
+            win { gdi32/DeleteObject(mem/bmp) }
+            win { gdi32/DeleteDC(mem/dc) }
+        }
+        win { user32/EndPaint(hwnd, &ps) }
+    }
     return 0
 }

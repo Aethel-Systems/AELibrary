@@ -1,0 +1,147 @@
+// -----------------------------------------------------------------------------
+// Win/ABI - Native Windows x64 ABI Invoke Bridges
+// -----------------------------------------------------------------------------
+
+hardware func Win/ABI/invoke0(target: UInt64): UInt64 {
+    hardware {
+        var rax: reg<"rax", UInt64>
+        var rsp: reg<"rsp", UInt64>
+        let old/sp: UInt64 = rsp
+        let work/sp: UInt64 = (old/sp - 32) & 0xFFFFFFFFFFFFFFF0
+        rsp = work/sp
+        rax = target
+        hardware\isa\call()
+        rsp = old/sp
+        return rax
+    }
+}
+
+hardware func Win/ABI/invoke1(target: UInt64, a0: UInt64): UInt64 {
+    hardware {
+        var rax: reg<"rax", UInt64>
+        var rcx: reg<"rcx", UInt64>
+        var rsp: reg<"rsp", UInt64>
+        let old/sp: UInt64 = rsp
+        let work/sp: UInt64 = (old/sp - 32) & 0xFFFFFFFFFFFFFFF0
+        rsp = work/sp
+        rcx = a0
+        rax = target
+        hardware\isa\call()
+        rsp = old/sp
+        return rax
+    }
+}
+
+hardware func Win/ABI/invoke2(target: UInt64, a0: UInt64, a1: UInt64): UInt64 {
+    hardware {
+        var rax: reg<"rax", UInt64>
+        var rcx: reg<"rcx", UInt64>
+        var rdx: reg<"rdx", UInt64>
+        var rsp: reg<"rsp", UInt64>
+        let old/sp: UInt64 = rsp
+        let work/sp: UInt64 = (old/sp - 32) & 0xFFFFFFFFFFFFFFF0
+        rsp = work/sp
+        rcx = a0
+        rdx = a1
+        rax = target
+        hardware\isa\call()
+        rsp = old/sp
+        return rax
+    }
+}
+
+hardware func Win/ABI/invoke3(target: UInt64, a0: UInt64, a1: UInt64, a2: UInt64): UInt64 {
+    hardware {
+        var rax: reg<"rax", UInt64>
+        var rcx: reg<"rcx", UInt64>
+        var rdx: reg<"rdx", UInt64>
+        var r8:  reg<"r8", UInt64>
+        var rsp: reg<"rsp", UInt64>
+        let old/sp: UInt64 = rsp
+        let work/sp: UInt64 = (old/sp - 32) & 0xFFFFFFFFFFFFFFF0
+        rsp = work/sp
+        rcx = a0
+        rdx = a1
+        r8 = a2
+        rax = target
+        hardware\isa\call()
+        rsp = old/sp
+        return rax
+    }
+}
+
+hardware func Win/ABI/invoke4(target: UInt64, a0: UInt64, a1: UInt64, a2: UInt64, a3: UInt64): UInt64 {
+    hardware {
+        var rax: reg<"rax", UInt64>
+        var rcx: reg<"rcx", UInt64>
+        var rdx: reg<"rdx", UInt64>
+        var r8:  reg<"r8", UInt64>
+        var r9:  reg<"r9", UInt64>
+        var rsp: reg<"rsp", UInt64>
+        let old/sp: UInt64 = rsp
+        let work/sp: UInt64 = (old/sp - 32) & 0xFFFFFFFFFFFFFFF0
+        rsp = work/sp
+        rcx = a0
+        rdx = a1
+        r8 = a2
+        r9 = a3
+        rax = target
+        hardware\isa\call()
+        rsp = old/sp
+        return rax
+    }
+}
+
+hardware func Win/ABI/invoke6(target: UInt64, a0: UInt64, a1: UInt64, a2: UInt64, a3: UInt64, a4: UInt64, a5: UInt64): UInt64 {
+    hardware {
+        var rax: reg<"rax", UInt64>
+        var rcx: reg<"rcx", UInt64>
+        var rdx: reg<"rdx", UInt64>
+        var r8:  reg<"r8", UInt64>
+        var r9:  reg<"r9", UInt64>
+        var rsp: reg<"rsp", UInt64>
+        let old/sp: UInt64 = rsp
+        let work/sp: UInt64 = (old/sp - 64) & 0xFFFFFFFFFFFFFFF0
+        rsp = work/sp
+        let stack/ptr: ptr<UInt64> = cast<ptr<UInt64>>(work/sp)
+        stack/ptr[4] = a4
+        stack/ptr[5] = a5
+        rcx = a0
+        rdx = a1
+        r8 = a2
+        r9 = a3
+        rax = target
+        hardware\isa\call()
+        rsp = old/sp
+        return rax
+    }
+}
+
+hardware func Win/ABI/invoke10(target: UInt64, a0: UInt64, a1: UInt64, a2: UInt64, a3: UInt64, a4: UInt64, a5: UInt64, a6: UInt64, a7: UInt64, a8: UInt64, a9: UInt64): UInt64 {
+    hardware {
+        var rax: reg<"rax", UInt64>
+        var rcx: reg<"rcx", UInt64>
+        var rdx: reg<"rdx", UInt64>
+        var r8:  reg<"r8", UInt64>
+        var r9:  reg<"r9", UInt64>
+        var rsp: reg<"rsp", UInt64>
+        let old/sp: UInt64 = rsp
+        let work/sp: UInt64 = (old/sp - 96) & 0xFFFFFFFFFFFFFFF0
+        rsp = work/sp
+        let stack/ptr: ptr<UInt64> = cast<ptr<UInt64>>(work/sp)
+        stack/ptr[4] = a4
+        stack/ptr[5] = a5
+        stack/ptr[6] = a6
+        stack/ptr[7] = a7
+        stack/ptr[8] = a8
+        stack/ptr[9] = a9
+        rcx = a0
+        rdx = a1
+        r8 = a2
+        r9 = a3
+        rax = target
+        hardware\isa\call()
+        rsp = old/sp
+        return rax
+    }
+}

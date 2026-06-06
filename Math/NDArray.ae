@@ -1,0 +1,174 @@
+// -----------------------------------------------------------------------------
+// Math/NDArray - High-Dimensional Vector & Matrix Scientific Engine
+// -----------------------------------------------------------------------------
+
+struct Math/NDArray {
+    data: ptr<Double>
+    shape: [4]UInt64
+    strides: [4]UInt64
+    dimensions: UInt64
+    size: UInt64
+}
+
+func Math/NDArray/malloc(size: UInt64) : UInt64 {
+    let base: UInt64 = 0
+    let sz: UInt64 = (size + 4095) & 0xFFFFFFFFFFFFF000
+    win { ntdll/NtAllocateVirtualMemory(cast<UInt64>(-1), &base, 0, &sz, 0x3000, 0x04) }
+    return base
+}
+
+// 建立指定形状的密集多维数组（4KB 内存池对齐）
+func Math/NDArray/create(shape: ptr<UInt64>, dimensions: UInt64): ptr<Math/NDArray> {
+    let array/ptr: ptr<Math/NDArray> = cast<ptr<Math/NDArray>>(Math/NDArray/malloc(128))
+    array/ptr\dimensions = dimensions
+    
+    var total/size: UInt64 = 1
+    var i: UInt64 = 0
+    while i < dimensions {
+        array/ptr\shape[i] = shape[i]
+        total/size = total/size * shape[i]
+        i = i + 1
+    }
+    array/ptr\size = total/size
+    
+    // 计算标准 C 连续步长 (Row-Major Strides)
+    var stride: UInt64 = 1
+    i = dimensions
+    while i > 0 {
+        i = i - 1
+        array/ptr\strides[i] = stride
+        stride = stride * shape[i]
+    }
+    
+    let data/bytes: UInt64 = total/size * 8
+    array/ptr\data = cast<ptr<Double>>(Math/NDArray/malloc(data/bytes))
+    return array/ptr
+}
+
+// arange generator: 生成等差数列矩阵
+func Math/NDArray/arange(start: Double, stop: Double, step: Double): ptr<Math/NDArray> {
+    let count: UInt64 = cast<UInt64>((stop - start) ÷ step)
+    let shape: [1]UInt64
+    shape[0] = count
+    
+    let arr: ptr<Math/NDArray> = Math/NDArray/create(&shape[0], 1)
+    var i: UInt64 = 0
+    var cur: Double = start
+    while i < count {
+        arr\data[i] = cur
+        cur = cur + step
+        i = i + 1
+    }
+    return arr
+}
+
+// linspace generator: 生成指定点数区间等分矩阵
+func Math/NDArray/linspace(start: Double, stop: Double, num: UInt64): ptr<Math/NDArray> {
+    let shape: [1]UInt64
+    shape[0] = num
+    
+    let arr: ptr<Math/NDArray> = Math/NDArray/create(&shape[0], 1)
+    if num == 1 {
+        arr\data[0] = start
+        return arr
+    }
+    
+    let step: Double = (stop - start) ÷ (cast<Double>(num - 1))
+    var i: UInt64 = 0
+    while i < num {
+        arr\data[i] = start + (cast<Double>(i) * step)
+        i = i + 1
+    }
+    return arr
+}
+
+// 矩阵转置 (2D Matrix Transpose)
+func Math/NDArray/transpose(matrix: ptr<Math/NDArray>): ptr<Math/NDArray> {
+    if matrix\dimensions != 2 { return nil }
+    
+    let shape: [2]UInt64
+    shape[0] = matrix\shape[1]
+    shape[1] = matrix\shape[0]
+    
+    let trans: ptr<Math/NDArray> = Math/NDArray/create(&shape[0], 2)
+    
+    var r: UInt64 = 0
+    while r < matrix\shape[0] {
+        var c: UInt64 = 0
+        while c < matrix\shape[1] {
+            let src/idx: UInt64 = (r * matrix\strides[0]) + (c * matrix\strides[1])
+            let dst/idx: UInt64 = (c * trans\strides[0]) + (r * trans\strides[1])
+            trans\data[dst/idx] = matrix\data[src/idx]
+            c = c + 1
+        }
+        r = r + 1
+    }
+    return trans
+}
+
+// 元素级逐位对齐加法 (Broadcasting 基础版)
+func Math/NDArray/add(a: ptr<Math/NDArray>, b: ptr<Math/NDArray>, out: ptr<Math/NDArray>): Bool {
+    if a\size != b\size || a\size != out\size { return false }
+    
+    var i: UInt64 = 0
+    let count: UInt64 = a\size
+    while i < count {
+        out\data[i] = a\data[i] + b\data[i]
+        i = i + 1
+    }
+    return true
+}
+
+// 元素级逐位对齐乘法 (Dot-wise Multiplication)
+func Math/NDArray/multiply(a: ptr<Math/NDArray>, b: ptr<Math/NDArray>, out: ptr<Math/NDArray>): Bool {
+    if a\size != b\size || a\size != out\size { return false }
+    
+    var i: UInt64 = 0
+    let count: UInt64 = a\size
+    while i < count {
+        out\data[i] = a\data[i] * b\data[i]
+        i = i + 1
+    }
+    return true
+}
+
+// 工业级高能矩阵点乘乘法 (Cache-Friendly 2D Matrix Multiplication)
+// 优化为行乘行累加模式（利用空间连续局部性，超越传统三层循环的缓存命中效率）
+func Math/NDArray/matmul(a: ptr<Math/NDArray>, b: ptr<Math/NDArray>, out: ptr<Math/NDArray>): Bool {
+    if a\dimensions != 2 || b\dimensions != 2 { return false }
+    if a\shape[1] != b\shape[0] { return false } // 维度不匹配
+    
+    let m: UInt64 = a\shape[0]
+    let n: UInt64 = a\shape[1]
+    let p: UInt64 = b\shape[1]
+    
+    // 初始化输出区为零
+    var idx: UInt64 = 0
+    let out/total: UInt64 = m * p
+    while idx < out/total {
+        out\data[idx] = 0.0
+        idx = idx + 1
+    }
+    
+    // Row-Major 高效缓存展开：交换 K 与 J 的循环顺序（I-K-J 核心模式）
+    var i: UInt64 = 0
+    while i < m {
+        var k: UInt64 = 0
+        while k < n {
+            let a/val: Double = a\data[(i * a\strides[0]) + (k * a\strides[1])]
+            
+            var j: UInt64 = 0
+            while j < p {
+                let b/idx: UInt64 = (k * b\strides[0]) + (j * b\strides[1])
+                let out/idx: UInt64 = (i * out\strides[0]) + (j * out\strides[1])
+                
+                out\data[out/idx] = out\data[out/idx] + (a/val * b\data[b/idx])
+                j = j + 1
+            }
+            k = k + 1
+        }
+        i = i + 1
+    }
+    
+    return true
+}

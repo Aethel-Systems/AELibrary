@@ -1,0 +1,94 @@
+// -----------------------------------------------------------------------------
+// AethelOS Math Core / Software IEEE-754 Transcendentals
+// -----------------------------------------------------------------------------
+
+let Math/PI: Double = 3.14159265358979323846
+let Math/PI/HALF: Double = 1.57079632679489661923
+let Math/E: Double  = 2.71828182845904523536
+
+// 零拷贝位元转换（用于 IEEE-754 快速运算）
+func Math/DoubleToBits(x: Double): UInt64 {
+    let px: ptr<Double> = &x
+    let pbits: ptr<UInt64> = px as ptr<UInt64>
+    return pbits[0]
+}
+
+func Math/BitsToDouble(bits: UInt64): Double {
+    let pbits: ptr<UInt64> = &bits
+    let px: ptr<Double> = pbits as ptr<Double>
+    return px[0]
+}
+
+func Math/abs(x: Double): Double {
+    let bits: UInt64 = Math/DoubleToBits(x)
+    bits = bits & 0x7FFFFFFFFFFFFFFF
+    return Math/BitsToDouble(bits)
+}
+
+func Math/fmod(x: Double, y: Double): Double {
+    let div: Double = x ÷ y
+    let int/part: Int64 = cast<Int64>(div)
+    return x - (cast<Double>(int/part) * y)
+}
+
+// 工业级牛顿-拉弗森逼近法求平方根
+func Math/sqrt(x: Double): Double {
+    if x < 0.0 { return 0.0 }
+    if x == 0.0 { return 0.0 }
+    
+    // IEEE-754 魔法初值猜测
+    let bits: UInt64 = Math/DoubleToBits(x)
+    bits = (bits >> 1) + 0x1FF8000000000000
+    var guess: Double = Math/BitsToDouble(bits)
+    
+    // 5次迭代达到全精度
+    guess = 0.5 * (guess + x ÷ guess)
+    guess = 0.5 * (guess + x ÷ guess)
+    guess = 0.5 * (guess + x ÷ guess)
+    guess = 0.5 * (guess + x ÷ guess)
+    guess = 0.5 * (guess + x ÷ guess)
+    
+    return guess
+}
+
+// 高精度泰勒展开求正弦
+func Math/sin(raw: Double): Double {
+    // 归一化到 [-PI, PI]
+    let x: Double = Math/fmod(raw + Math/PI, Math/PI * 2.0) - Math/PI
+    
+    let x2: Double = x * x
+    let x3: Double = x2 * x
+    let x5: Double = x3 * x2
+    let x7: Double = x5 * x2
+    let x9: Double = x7 * x2
+    let x11: Double = x9 * x2
+    let x13: Double = x11 * x2
+    
+    let c3: Double  = 0.16666666666666666666
+    let c5: Double  = 0.00833333333333333333
+    let c7: Double  = 0.00019841269841269841
+    let c9: Double  = 0.00000275573192239858
+    let c11: Double = 0.00000002505210838544
+    let c13: Double = 0.00000000016059043836
+    
+    return x - (x3 * c3) + (x5 * c5) - (x7 * c7) + (x9 * c9) - (x11 * c11) + (x13 * c13)
+}
+
+func Math/cos(x: Double): Double {
+    return Math/sin(x + Math/PI/HALF)
+}
+
+func Math/pow(base: Double, exp: UInt32): Double {
+    var result: Double = 1.0
+    var b: Double = base
+    var e: UInt32 = exp
+    
+    while e > 0 {
+        if (e & 1) != 0 {
+            result = result * b
+        }
+        b = b * b
+        e = e >> 1
+    }
+    return result
+}
