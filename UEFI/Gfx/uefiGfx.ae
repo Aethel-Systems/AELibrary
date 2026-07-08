@@ -1,0 +1,192 @@
+struct AER/RECT {
+    x: UInt32
+    y: UInt32
+    w: UInt32
+    h: UInt32
+}
+
+struct AER/DIRTY/LIST {
+    count: UInt64
+    rects: [32]AER/RECT
+}
+
+struct AER/BACK/BUFFER {
+    base: UInt64
+    width: UInt32
+    height: UInt32
+    stride: UInt32
+    bytes: UInt64
+    frame/buffer: UInt64
+}
+
+const GOP/OFFSET/MODE: UInt64 = 0x18
+const GOPMODE/OFFSET/INFO: UInt64 = 0x08
+const GOPMODE/OFFSET/FRAME/BUFFER/BASE: UInt64 = 0x18
+const GOPINFO/OFFSET/HRES: UInt64 = 0x04
+const GOPINFO/OFFSET/VRES: UInt64 = 0x08
+const GOPINFO/OFFSET/PIXELS/PER/SCAN/LINE: UInt64 = 0x20
+const ALPHA/MAX: UInt32 = 255
+
+func Gfx/RectS(out: ptr<AER/RECT>, x: UInt32, y: UInt32, w: UInt32, h: UInt32) {
+    out\x = x
+    out\y = y
+    out\w = w
+    out\h = h
+}
+
+func Gfx/DirtyR(list: ptr<AER/DIRTY/LIST>) {
+    list\count = 0
+}
+
+func Gfx/DirtyP(list: ptr<AER/DIRTY/LIST>, x: UInt32, y: UInt32, w: UInt32, h: UInt32) {
+    if list\count >= 32 {
+        return
+    }
+    Gfx/RectS(cast<ptr<AER/RECT>>(cast<UInt64>(list) + 8 + (list\count * 16)), x, y, w, h)
+    list\count = list\count + 1
+}
+
+func Gfx/BufI(back: ptr<AER/BACK/BUFFER>, gop: UInt64, sys/table: ptr<EFI/SYSTEM/TABLE>) : Bool {
+    let mode/base/value: UInt64 = Mem/LoadU64(gop + GOP/OFFSET/MODE)
+    let mode: ptr<EFI/GRAPHICS/OUTPUT/PROTOCOL/MODE> = cast<ptr<EFI/GRAPHICS/OUTPUT/PROTOCOL/MODE>>(mode/base/value)
+    if mode == 0 {
+        Dbg/Stage(0x47)
+        return false
+    }
+    let mode/base: UInt64 = cast<UInt64>(mode)
+    let info/base/value: UInt64 = Mem/LoadU64(mode/base + GOPMODE/OFFSET/INFO)
+    let info: ptr<EFI/GRAPHICS/OUTPUT/MODE/INFO> = cast<ptr<EFI/GRAPHICS/OUTPUT/MODE/INFO>>(info/base/value)
+    if info == 0 {
+        Dbg/Stage(0x48)
+        return false
+    }
+
+    let info/base: UInt64 = cast<UInt64>(info)
+    back\width = Mem/LoadU32(info/base + GOPINFO/OFFSET/HRES)
+    back\height = Mem/LoadU32(info/base + GOPINFO/OFFSET/VRES)
+    back\stride = Mem/LoadU32(info/base + GOPINFO/OFFSET/PIXELS/PER/SCAN/LINE)
+    back\bytes = (back\stride as UInt64) * (back\height as UInt64) * 4
+    back\frame/buffer = Mem/LoadU64(mode/base + GOPMODE/OFFSET/FRAME/BUFFER/BASE)
+    Dbg/Stage(0x49)
+    back\base = Mem/AllocP(sys/table, back\bytes)
+    if back\base != 0 {
+        Dbg/Stage(0x4A)
+        return true
+    }
+    Dbg/Stage(0x4B)
+    back\base = back\frame/buffer
+    return true
+}
+
+func Gfx/PixelS(back: ptr<AER/BACK/BUFFER>, x: UInt32, y: UInt32, color: UInt32) {
+    let pixels: ptr<UInt32> = cast<ptr<UInt32>>(back\base)
+    let idx: UInt64 = (y as UInt64) * (back\stride as UInt64) + (x as UInt64)
+    pixels[idx] = color
+}
+
+func Gfx/PixelL(back: ptr<AER/BACK/BUFFER>, x: UInt32, y: UInt32) : UInt32 {
+    let pixels: ptr<UInt32> = cast<ptr<UInt32>>(back\base)
+    let idx: UInt64 = (y as UInt64) * (back\stride as UInt64) + (x as UInt64)
+    return pixels[idx]
+}
+
+func Gfx/ColorBC(dst: UInt32, src: UInt32, alpha: UInt32) : UInt32 {
+    let inv/alpha: UInt32 = ALPHA/MAX - alpha
+    let numer: UInt64 = ((src as UInt64) * (alpha as UInt64)) + ((dst as UInt64) * (inv/alpha as UInt64)) + 127
+    let alpha/max/u64: UInt64 = ALPHA/MAX as UInt64
+    return cast<UInt32>(numer / alpha/max/u64)
+}
+
+func Gfx/ColorB(dst: UInt32, src: UInt32, alpha: UInt32) : UInt32 {
+    if alpha >= ALPHA/MAX {
+        return src
+    }
+    if alpha == 0 {
+        return dst
+    }
+
+    let dst/r: UInt32 = (dst >> 16) & 0xFF
+    let dst/g: UInt32 = (dst >> 8) & 0xFF
+    let dst/b: UInt32 = dst & 0xFF
+    let src/r: UInt32 = (src >> 16) & 0xFF
+    let src/g: UInt32 = (src >> 8) & 0xFF
+    let src/b: UInt32 = src & 0xFF
+
+    let out/r: UInt32 = Gfx/ColorBC(dst/r, src/r, alpha)
+    let out/g: UInt32 = Gfx/ColorBC(dst/g, src/g, alpha)
+    let out/b: UInt32 = Gfx/ColorBC(dst/b, src/b, alpha)
+
+    return 0xFF000000 | (out/r << 16) | (out/g << 8) | out/b
+}
+
+func Gfx/PixelB(back: ptr<AER/BACK/BUFFER>, x: UInt32, y: UInt32, color: UInt32, alpha: UInt32) {
+    if x >= back\width || y >= back\height {
+        return
+    }
+    if alpha >= ALPHA/MAX {
+        Gfx/PixelS(back, x, y, color)
+        return
+    }
+    if alpha == 0 {
+        return
+    }
+    let base: UInt32 = Gfx/PixelL(back, x, y)
+    Gfx/PixelS(back, x, y, Gfx/ColorB(base, color, alpha))
+}
+
+func Gfx/FillR(back: ptr<AER/BACK/BUFFER>, rect: ptr<AER/RECT>, color: UInt32) {
+    let yy: UInt32 = 0
+    while yy < rect\h {
+        let py: UInt32 = rect\y + yy
+        let xx: UInt32 = 0
+        while xx < rect\w {
+            let px: UInt32 = rect\x + xx
+            if px < back\width && py < back\height {
+                Gfx/PixelS(back, px, py, color)
+            }
+            xx = xx + 1
+        }
+        yy = yy + 1
+    }
+}
+
+func Gfx/FlushR(back: ptr<AER/BACK/BUFFER>, rect: ptr<AER/RECT>) {
+    let src: ptr<UInt32> = cast<ptr<UInt32>>(back\base)
+    let dst: ptr<UInt32> = cast<ptr<UInt32>>(back\frame/buffer)
+    let yy: UInt32 = 0
+    while yy < rect\h {
+        let py: UInt32 = rect\y + yy
+        let xx: UInt32 = 0
+        while xx < rect\w {
+            let px: UInt32 = rect\x + xx
+            if px < back\width && py < back\height {
+                let idx: UInt64 = (py as UInt64) * (back\stride as UInt64) + (px as UInt64)
+                dst[idx] = src[idx]
+            }
+            xx = xx + 1
+        }
+        yy = yy + 1
+    }
+}
+
+func Gfx/FlushD(back: ptr<AER/BACK/BUFFER>, list: ptr<AER/DIRTY/LIST>) {
+    
+    let i: UInt64 = 0
+    while i < list\count {
+        let rect/p: ptr<AER/RECT> = cast<ptr<AER/RECT>>(cast<UInt64>(list) + 8 + (i * 16))
+        Gfx/FlushR(back, rect/p)
+        i = i + 1
+    }
+}
+
+func Gfx/AlphaM(alpha: UInt32, factor: UInt32) : UInt32 {
+    if alpha == 0 || factor == 0 {
+        return 0
+    }
+    if factor >= ALPHA/MAX {
+        return alpha
+    }
+    let numer: UInt64 = ((alpha as UInt64) * (factor as UInt64)) + 127
+    let alpha/max/u64: UInt64 = ALPHA/MAX as UInt64
+    return cast<UInt32>(numer / alpha/max/u64)
+}

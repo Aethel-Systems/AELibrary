@@ -1,0 +1,786 @@
+const DEC/TEN: UInt32 = 10
+const DEC/HUNDRED: UInt32 = 100
+const DEC/THOUSAND: UInt32 = 1000
+const ALPHA/MAX: UInt32 = 255
+const GLYPH/WIDTH: UInt32 = 10
+const GLYPH/HEIGHT: UInt32 = 12
+const GLYPH/ADVANCE: UInt32 = 11
+
+struct AER/TEXT/STYLE {
+    color: UInt32
+    glow/color: UInt32
+    shadow/color: UInt32
+    glow/alpha: UInt32
+    shadow/alpha: UInt32
+    scale: UInt32
+    tracking: UInt32
+}
+
+func Gfx/TextA(style: ptr<AER/TEXT/STYLE>) : UInt32 {
+    return (GLYPH/ADVANCE * style\scale) + style\tracking
+}
+
+func Gfx/GlyphAR(ch: UInt8, row: UInt32) : UInt32 {
+    if row >= GLYPH/HEIGHT {
+        return 0
+    }
+    if ch == 32 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x00000 }
+        if row == 2 { return 0x00000 }
+        if row == 3 { return 0x00000 }
+        if row == 4 { return 0x00000 }
+        if row == 5 { return 0x00000 }
+        if row == 6 { return 0x00000 }
+        if row == 7 { return 0x00000 }
+        if row == 8 { return 0x00000 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 45 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x00000 }
+        if row == 2 { return 0x00000 }
+        if row == 3 { return 0x00000 }
+        if row == 4 { return 0x00000 }
+        if row == 5 { return 0x3FFD0 }
+        if row == 6 { return 0x00000 }
+        if row == 7 { return 0x00000 }
+        if row == 8 { return 0x00000 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 46 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x00000 }
+        if row == 2 { return 0x00000 }
+        if row == 3 { return 0x00000 }
+        if row == 4 { return 0x00000 }
+        if row == 5 { return 0x00000 }
+        if row == 6 { return 0x00000 }
+        if row == 7 { return 0x02D00 }
+        if row == 8 { return 0x02D00 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 47 {
+        if row == 0 { return 0x002C0 }
+        if row == 1 { return 0x00380 }
+        if row == 2 { return 0x00B40 }
+        if row == 3 { return 0x00E00 }
+        if row == 4 { return 0x01D00 }
+        if row == 5 { return 0x03C00 }
+        if row == 6 { return 0x07400 }
+        if row == 7 { return 0x0F000 }
+        if row == 8 { return 0x1E000 }
+        if row == 9 { return 0x2C000 }
+        if row == 10 { return 0x28000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 58 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x00000 }
+        if row == 2 { return 0x00000 }
+        if row == 3 { return 0x02D00 }
+        if row == 4 { return 0x02D00 }
+        if row == 5 { return 0x00000 }
+        if row == 6 { return 0x00000 }
+        if row == 7 { return 0x02D00 }
+        if row == 8 { return 0x02D00 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 60 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x00000 }
+        if row == 2 { return 0x001E0 }
+        if row == 3 { return 0x01F80 }
+        if row == 4 { return 0x1F900 }
+        if row == 5 { return 0xBD000 }
+        if row == 6 { return 0x1F900 }
+        if row == 7 { return 0x01F90 }
+        if row == 8 { return 0x001E0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 62 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x00000 }
+        if row == 2 { return 0x78000 }
+        if row == 3 { return 0x1F800 }
+        if row == 4 { return 0x01F80 }
+        if row == 5 { return 0x003F4 }
+        if row == 6 { return 0x02F80 }
+        if row == 7 { return 0x1F800 }
+        if row == 8 { return 0x78000 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 48 {
+        if row == 0 { return 0x0BE00 }
+        if row == 1 { return 0x1D380 }
+        if row == 2 { return 0x2C1C0 }
+        if row == 3 { return 0x381D0 }
+        if row == 4 { return 0x381D0 }
+        if row == 5 { return 0x381D0 }
+        if row == 6 { return 0x2C1C0 }
+        if row == 7 { return 0x1D780 }
+        if row == 8 { return 0x07E00 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 49 {
+        if row == 0 { return 0x1AC00 }
+        if row == 1 { return 0x3FC00 }
+        if row == 2 { return 0x02C00 }
+        if row == 3 { return 0x02C00 }
+        if row == 4 { return 0x02C00 }
+        if row == 5 { return 0x02C00 }
+        if row == 6 { return 0x02C00 }
+        if row == 7 { return 0x02C00 }
+        if row == 8 { return 0x3FFD0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 50 {
+        if row == 0 { return 0x0BE00 }
+        if row == 1 { return 0x2D3C0 }
+        if row == 2 { return 0x341C0 }
+        if row == 3 { return 0x003C0 }
+        if row == 4 { return 0x00B80 }
+        if row == 5 { return 0x02E00 }
+        if row == 6 { return 0x0B800 }
+        if row == 7 { return 0x3E000 }
+        if row == 8 { return 0x7FFC0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 51 {
+        if row == 0 { return 0x1BF40 }
+        if row == 1 { return 0x2D2C0 }
+        if row == 2 { return 0x001C0 }
+        if row == 3 { return 0x003C0 }
+        if row == 4 { return 0x02F80 }
+        if row == 5 { return 0x007D0 }
+        if row == 6 { return 0x000E0 }
+        if row == 7 { return 0x342D0 }
+        if row == 8 { return 0x2FF40 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 52 {
+        if row == 0 { return 0x00F40 }
+        if row == 1 { return 0x02F40 }
+        if row == 2 { return 0x03F40 }
+        if row == 3 { return 0x0BB40 }
+        if row == 4 { return 0x0E740 }
+        if row == 5 { return 0x2D740 }
+        if row == 6 { return 0x3FFC0 }
+        if row == 7 { return 0x00740 }
+        if row == 8 { return 0x02FC0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 53 {
+        if row == 0 { return 0x2FF80 }
+        if row == 1 { return 0x2C000 }
+        if row == 2 { return 0x2C000 }
+        if row == 3 { return 0x2FF40 }
+        if row == 4 { return 0x1D2C0 }
+        if row == 5 { return 0x000D0 }
+        if row == 6 { return 0x000D0 }
+        if row == 7 { return 0x382D0 }
+        if row == 8 { return 0x2FF40 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 54 {
+        if row == 0 { return 0x01FD0 }
+        if row == 1 { return 0x07900 }
+        if row == 2 { return 0x0E000 }
+        if row == 3 { return 0x1EF40 }
+        if row == 4 { return 0x2F6D0 }
+        if row == 5 { return 0x2D0E0 }
+        if row == 6 { return 0x1D0E0 }
+        if row == 7 { return 0x0E1D0 }
+        if row == 8 { return 0x07F80 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 55 {
+        if row == 0 { return 0x3FFD0 }
+        if row == 1 { return 0x342C0 }
+        if row == 2 { return 0x00380 }
+        if row == 3 { return 0x00740 }
+        if row == 4 { return 0x00B00 }
+        if row == 5 { return 0x00F00 }
+        if row == 6 { return 0x01E00 }
+        if row == 7 { return 0x02D00 }
+        if row == 8 { return 0x02C00 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 56 {
+        if row == 0 { return 0x0BF40 }
+        if row == 1 { return 0x2D3C0 }
+        if row == 2 { return 0x2C1C0 }
+        if row == 3 { return 0x2D3C0 }
+        if row == 4 { return 0x0FF80 }
+        if row == 5 { return 0x2D3C0 }
+        if row == 6 { return 0x381D0 }
+        if row == 7 { return 0x2D2C0 }
+        if row == 8 { return 0x0BF40 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 57 {
+        if row == 0 { return 0x07F40 }
+        if row == 1 { return 0x1E3C0 }
+        if row == 2 { return 0x2C1D0 }
+        if row == 3 { return 0x2C1E0 }
+        if row == 4 { return 0x1E7E0 }
+        if row == 5 { return 0x07EE0 }
+        if row == 6 { return 0x002D0 }
+        if row == 7 { return 0x00B80 }
+        if row == 8 { return 0x1FD00 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 65 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x3FD00 }
+        if row == 2 { return 0x07E00 }
+        if row == 3 { return 0x0FB00 }
+        if row == 4 { return 0x0E740 }
+        if row == 5 { return 0x2D3C0 }
+        if row == 6 { return 0x3FFD0 }
+        if row == 7 { return 0x740E0 }
+        if row == 8 { return 0xFD3F8 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 66 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xFFF80 }
+        if row == 2 { return 0x2C1D0 }
+        if row == 3 { return 0x2C2D0 }
+        if row == 4 { return 0x2FFC0 }
+        if row == 5 { return 0x2C1F0 }
+        if row == 6 { return 0x2C0B0 }
+        if row == 7 { return 0x2C0B0 }
+        if row == 8 { return 0xFFFD0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 67 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x0BEA0 }
+        if row == 2 { return 0x3D1F0 }
+        if row == 3 { return 0x740A0 }
+        if row == 4 { return 0xB0000 }
+        if row == 5 { return 0xB0000 }
+        if row == 6 { return 0xB0000 }
+        if row == 7 { return 0x3D1B0 }
+        if row == 8 { return 0x0BFD0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 68 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xFFE40 }
+        if row == 2 { return 0x382C0 }
+        if row == 3 { return 0x380E0 }
+        if row == 4 { return 0x380E0 }
+        if row == 5 { return 0x380B0 }
+        if row == 6 { return 0x380E0 }
+        if row == 7 { return 0x382D0 }
+        if row == 8 { return 0xFFF40 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 69 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xFFFE0 }
+        if row == 2 { return 0x2C0E0 }
+        if row == 3 { return 0x2CDD0 }
+        if row == 4 { return 0x2FE00 }
+        if row == 5 { return 0x2CD00 }
+        if row == 6 { return 0x2C0A0 }
+        if row == 7 { return 0x2C0B0 }
+        if row == 8 { return 0xFFFF0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 70 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x7FFF4 }
+        if row == 2 { return 0x1D074 }
+        if row == 3 { return 0x1DB74 }
+        if row == 4 { return 0x1FF00 }
+        if row == 5 { return 0x1DB00 }
+        if row == 6 { return 0x1D000 }
+        if row == 7 { return 0x1D000 }
+        if row == 8 { return 0x7FE00 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 71 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x0BFA0 }
+        if row == 2 { return 0x3D1F0 }
+        if row == 3 { return 0x740A0 }
+        if row == 4 { return 0xB0000 }
+        if row == 5 { return 0xB0FF4 }
+        if row == 6 { return 0xB00B0 }
+        if row == 7 { return 0x391F0 }
+        if row == 8 { return 0x1BF90 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 72 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x7F7F0 }
+        if row == 2 { return 0x2C1D0 }
+        if row == 3 { return 0x2C1D0 }
+        if row == 4 { return 0x2FFD0 }
+        if row == 5 { return 0x2C1D0 }
+        if row == 6 { return 0x2C1D0 }
+        if row == 7 { return 0x2C1D0 }
+        if row == 8 { return 0xBF7F4 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 73 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x3FFD0 }
+        if row == 2 { return 0x02C00 }
+        if row == 3 { return 0x02C00 }
+        if row == 4 { return 0x02C00 }
+        if row == 5 { return 0x02C00 }
+        if row == 6 { return 0x02C00 }
+        if row == 7 { return 0x02C00 }
+        if row == 8 { return 0x3FFD0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 74 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x07FF8 }
+        if row == 2 { return 0x002C0 }
+        if row == 3 { return 0x002C0 }
+        if row == 4 { return 0x002C0 }
+        if row == 5 { return 0x702C0 }
+        if row == 6 { return 0x742C0 }
+        if row == 7 { return 0x74780 }
+        if row == 8 { return 0x6FE00 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 75 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xFF7F4 }
+        if row == 2 { return 0x2C7C0 }
+        if row == 3 { return 0x2EF00 }
+        if row == 4 { return 0x2FC00 }
+        if row == 5 { return 0x2FF00 }
+        if row == 6 { return 0x2D780 }
+        if row == 7 { return 0x2C2C0 }
+        if row == 8 { return 0xFF4F8 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 76 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xBFD00 }
+        if row == 2 { return 0x0E000 }
+        if row == 3 { return 0x0E000 }
+        if row == 4 { return 0x0E000 }
+        if row == 5 { return 0x0E000 }
+        if row == 6 { return 0x0E070 }
+        if row == 7 { return 0x0E070 }
+        if row == 8 { return 0xBFFF0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 77 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xF81F8 }
+        if row == 2 { return 0xBC2F0 }
+        if row == 3 { return 0xBE3F0 }
+        if row == 4 { return 0xBBBB0 }
+        if row == 5 { return 0xB7EB0 }
+        if row == 6 { return 0xB2DB0 }
+        if row == 7 { return 0xB00B0 }
+        if row == 8 { return 0xFD3F8 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 78 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xFC7F4 }
+        if row == 2 { return 0x3E0E0 }
+        if row == 3 { return 0x3F4E0 }
+        if row == 4 { return 0x3BCE0 }
+        if row == 5 { return 0x39EE0 }
+        if row == 6 { return 0x38BE0 }
+        if row == 7 { return 0x383E0 }
+        if row == 8 { return 0xFF1E0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 79 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x0BF40 }
+        if row == 2 { return 0x3D2D0 }
+        if row == 3 { return 0xB40B0 }
+        if row == 4 { return 0xB0070 }
+        if row == 5 { return 0xB0070 }
+        if row == 6 { return 0xB40B0 }
+        if row == 7 { return 0x3D2D0 }
+        if row == 8 { return 0x0BF40 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 80 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x7FF90 }
+        if row == 2 { return 0x0E0F0 }
+        if row == 3 { return 0x0E0B0 }
+        if row == 4 { return 0x0E1F0 }
+        if row == 5 { return 0x0FF80 }
+        if row == 6 { return 0x0E000 }
+        if row == 7 { return 0x0E000 }
+        if row == 8 { return 0x7FE00 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 81 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x0BF40 }
+        if row == 2 { return 0x3D2D0 }
+        if row == 3 { return 0xB40B0 }
+        if row == 4 { return 0xB0070 }
+        if row == 5 { return 0xB0070 }
+        if row == 6 { return 0xB40B0 }
+        if row == 7 { return 0x3D2D0 }
+        if row == 8 { return 0x1FF40 }
+        if row == 9 { return 0x0FE70 }
+        if row == 10 { return 0x1FFE0 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 82 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xFFF40 }
+        if row == 2 { return 0x2C2D0 }
+        if row == 3 { return 0x2C0D0 }
+        if row == 4 { return 0x2C6D0 }
+        if row == 5 { return 0x2FF40 }
+        if row == 6 { return 0x2C780 }
+        if row == 7 { return 0x2C1D0 }
+        if row == 8 { return 0xFF4B8 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 83 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x0BED0 }
+        if row == 2 { return 0x2D1D0 }
+        if row == 3 { return 0x3C000 }
+        if row == 4 { return 0x1FE40 }
+        if row == 5 { return 0x06FD0 }
+        if row == 6 { return 0x001E0 }
+        if row == 7 { return 0x381D0 }
+        if row == 8 { return 0x37F80 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 84 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xBFFF0 }
+        if row == 2 { return 0xB2CB0 }
+        if row == 3 { return 0x72CB0 }
+        if row == 4 { return 0x02C00 }
+        if row == 5 { return 0x02C00 }
+        if row == 6 { return 0x02C00 }
+        if row == 7 { return 0x02C00 }
+        if row == 8 { return 0x1FF80 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 85 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xFF7F4 }
+        if row == 2 { return 0x380E0 }
+        if row == 3 { return 0x380E0 }
+        if row == 4 { return 0x380E0 }
+        if row == 5 { return 0x380E0 }
+        if row == 6 { return 0x380D0 }
+        if row == 7 { return 0x2D2C0 }
+        if row == 8 { return 0x0BF40 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 86 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xFD3F8 }
+        if row == 2 { return 0x780E0 }
+        if row == 3 { return 0x3C1D0 }
+        if row == 4 { return 0x1D3C0 }
+        if row == 5 { return 0x0E740 }
+        if row == 6 { return 0x0BB00 }
+        if row == 7 { return 0x07E00 }
+        if row == 8 { return 0x02D00 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 87 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xFE7F8 }
+        if row == 2 { return 0xB00B0 }
+        if row == 3 { return 0x73DB0 }
+        if row == 4 { return 0x77EE0 }
+        if row == 5 { return 0x3FFE0 }
+        if row == 6 { return 0x3F7E0 }
+        if row == 7 { return 0x3E3D0 }
+        if row == 8 { return 0x3C2D0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 88 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xBE3F0 }
+        if row == 2 { return 0x2D3C0 }
+        if row == 3 { return 0x0FB40 }
+        if row == 4 { return 0x07E00 }
+        if row == 5 { return 0x07E00 }
+        if row == 6 { return 0x0FB40 }
+        if row == 7 { return 0x2D3D0 }
+        if row == 8 { return 0xFE7F4 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 89 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0xBD3F4 }
+        if row == 2 { return 0x2D3C0 }
+        if row == 3 { return 0x0F740 }
+        if row == 4 { return 0x07E00 }
+        if row == 5 { return 0x02C00 }
+        if row == 6 { return 0x02C00 }
+        if row == 7 { return 0x02C00 }
+        if row == 8 { return 0x1FFC0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    if ch == 90 {
+        if row == 0 { return 0x00000 }
+        if row == 1 { return 0x3FFD0 }
+        if row == 2 { return 0x3C7C0 }
+        if row == 3 { return 0x28F40 }
+        if row == 4 { return 0x02D00 }
+        if row == 5 { return 0x07800 }
+        if row == 6 { return 0x0F0D0 }
+        if row == 7 { return 0x2D0E0 }
+        if row == 8 { return 0x3FFE0 }
+        if row == 9 { return 0x00000 }
+        if row == 10 { return 0x00000 }
+        if row == 11 { return 0x00000 }
+        return 0
+    }
+    return 0
+}
+
+func Gfx/GlyphAL(packed: UInt32, col: UInt32) : UInt32 {
+    let shift: UInt32 = (GLYPH/WIDTH - 1 - col) * 2
+    return (packed >> shift) & 0x3
+}
+
+func Gfx/GlyphAC(level: UInt32) : UInt32 {
+    if level == 0 {
+        return 0
+    }
+    if level == 1 {
+        return 132
+    }
+    if level == 2 {
+        return 224
+    }
+    return 255
+}
+
+func Gfx/DrawGL(back: ptr<AER/BACK/BUFFER>, x: UInt32, y: UInt32, ch: UInt8, color: UInt32, scale: UInt32, alpha/factor: UInt32) {
+    let row: UInt32 = 0
+    while row < GLYPH/HEIGHT {
+        let packed: UInt32 = Gfx/GlyphAR(ch, row)
+        let col: UInt32 = 0
+        while col < GLYPH/WIDTH {
+            let coverage: UInt32 = Gfx/GlyphAC(Gfx/GlyphAL(packed, col))
+            let alpha: UInt32 = Gfx/AlphaM(coverage, alpha/factor)
+            if alpha != 0 {
+                let sy: UInt32 = 0
+                while sy < scale {
+                    let sx: UInt32 = 0
+                    while sx < scale {
+                        Gfx/PixelB(back, x + (col * scale) + sx, y + (row * scale) + sy, color, alpha)
+                        sx = sx + 1
+                    }
+                    sy = sy + 1
+                }
+            }
+            col = col + 1
+        }
+        row = row + 1
+    }
+}
+
+func Gfx/DrawG(back: ptr<AER/BACK/BUFFER>, x: UInt32, y: UInt32, ch: UInt8, style: ptr<AER/TEXT/STYLE>) {
+    let halo: UInt32 = 0
+    if style\scale > 1 {
+        halo = style\scale - 1
+    }
+
+    if style\shadow/alpha != 0 {
+        Gfx/DrawGL(back, x + 1, y + 1, ch, style\shadow/color, style\scale, style\shadow/alpha)
+    }
+    if style\glow/alpha != 0 {
+        if x >= halo {
+            Gfx/DrawGL(back, x - halo, y, ch, style\glow/color, style\scale, style\glow/alpha)
+        }
+        Gfx/DrawGL(back, x + halo, y, ch, style\glow/color, style\scale, style\glow/alpha)
+        if y >= halo {
+            Gfx/DrawGL(back, x, y - halo, ch, style\glow/color, style\scale, style\glow/alpha)
+        }
+        Gfx/DrawGL(back, x, y + halo, ch, style\glow/color, style\scale, style\glow/alpha)
+    }
+    if style\scale > 1 {
+        Gfx/DrawGL(back, x + 1, y, ch, style\color, style\scale, 96)
+        Gfx/DrawGL(back, x, y + 1, ch, style\color, style\scale, 64)
+    }
+    Gfx/DrawGL(back, x, y, ch, style\color, style\scale, ALPHA/MAX)
+}
+
+func Gfx/DrawL(back: ptr<AER/BACK/BUFFER>, x: UInt32, y: UInt32, a: UInt8, b: UInt8, c: UInt8, d: UInt8, e: UInt8, f: UInt8, g: UInt8, h: UInt8, i: UInt8, j: UInt8, len: UInt32, style: ptr<AER/TEXT/STYLE>) {
+    let advance: UInt32 = Gfx/TextA(style)
+    if len > 0 { Gfx/DrawG(back, x + (0 * advance), y, a, style) }
+    if len > 1 { Gfx/DrawG(back, x + (1 * advance), y, b, style) }
+    if len > 2 { Gfx/DrawG(back, x + (2 * advance), y, c, style) }
+    if len > 3 { Gfx/DrawG(back, x + (3 * advance), y, d, style) }
+    if len > 4 { Gfx/DrawG(back, x + (4 * advance), y, e, style) }
+    if len > 5 { Gfx/DrawG(back, x + (5 * advance), y, f, style) }
+    if len > 6 { Gfx/DrawG(back, x + (6 * advance), y, g, style) }
+    if len > 7 { Gfx/DrawG(back, x + (7 * advance), y, h, style) }
+    if len > 8 { Gfx/DrawG(back, x + (8 * advance), y, i, style) }
+    if len > 9 { Gfx/DrawG(back, x + (9 * advance), y, j, style) }
+}
+
+func Gfx/DrawU(back: ptr<AER/BACK/BUFFER>, x: UInt32, y: UInt32, value: UInt32, min/digits: UInt32, style: ptr<AER/TEXT/STYLE>) {
+    let div: UInt32 = DEC/THOUSAND * DEC/TEN
+    let started: UInt32 = 0
+    let pos: UInt32 = 0
+    let advance: UInt32 = Gfx/TextA(style)
+    while div > 0 {
+        let digit: UInt32 = (value / div) % DEC/TEN
+        if digit != 0 || started != 0 || div == 1 || min/digits > pos + 1 {
+            Gfx/DrawG(back, x + (pos * advance), y, cast<UInt8>(48 + digit), style)
+            started = 1
+            pos = pos + 1
+        }
+        div = div / DEC/TEN
+    }
+}
+
+func Gfx/DrawT(back: ptr<AER/BACK/BUFFER>, x: UInt32, y: UInt32, value: UInt32, style: ptr<AER/TEXT/STYLE>) {
+    let advance: UInt32 = Gfx/TextA(style)
+    Gfx/DrawG(back, x, y, cast<UInt8>(48 + ((value / DEC/TEN) % DEC/TEN)), style)
+    Gfx/DrawG(back, x + advance, y, cast<UInt8>(48 + (value % DEC/TEN)), style)
+}
+
+func Gfx/DrawF(back: ptr<AER/BACK/BUFFER>, x: UInt32, y: UInt32, value: UInt32, style: ptr<AER/TEXT/STYLE>) {
+    let advance: UInt32 = Gfx/TextA(style)
+    Gfx/DrawG(back, x, y, cast<UInt8>(48 + ((value / DEC/THOUSAND) % DEC/TEN)), style)
+    Gfx/DrawG(back, x + advance, y, cast<UInt8>(48 + ((value / DEC/HUNDRED) % DEC/TEN)), style)
+    Gfx/DrawG(back, x + (2 * advance), y, cast<UInt8>(48 + ((value / DEC/TEN) % DEC/TEN)), style)
+    Gfx/DrawG(back, x + (3 * advance), y, cast<UInt8>(48 + (value % DEC/TEN)), style)
+}

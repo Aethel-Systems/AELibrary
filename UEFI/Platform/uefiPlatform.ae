@@ -1,0 +1,573 @@
+const EFI/SUCCESS: UInt64 = 0
+const EFI/NOT/READY: UInt64 = 0x8000000000000006
+const EFI/LOADER/DATA: UInt64 = 4
+const EFI/CONVENTIONAL/MEMORY: UInt64 = 7
+const ST/OFFSET/CON/IN: UInt64 = 0x30            // 撤销错误修改，改回 0x30
+const ST/OFFSET/RUNTIME/SERVICES: UInt64 = 0x58  // 撤销错误修改，改回 0x58
+const ST/OFFSET/BOOT/SERVICES: UInt64 = 0x60     // 撤销错误修改，改回 0x60
+const EFI/LOCATE/BY/PROTOCOL: UInt64 = 2
+const BS/OFFSET/GET/MEMORY/MAP: UInt64 = 0x38
+const BS/OFFSET/ALLOCATE/POOL: UInt64 = 0x40
+const BS/OFFSET/FREE/POOL: UInt64 = 0x48
+const BS/OFFSET/HANDLE/PROTOCOL: UInt64 = 0x98
+const BS/OFFSET/STALL: UInt64 = 0xF8
+const BS/OFFSET/SET/WATCHDOG/TIMER: UInt64 = 0x100
+const BS/OFFSET/LOCATE/HANDLE/BUFFER: UInt64 = 0x138
+const BS/OFFSET/LOCATE/PROTOCOL: UInt64 = 0x140
+const RS/OFFSET/GET/TIME: UInt64 = 0x18
+
+@packed
+struct EFI/GUID {
+    data1: UInt32
+    data2: UInt16
+    data3: UInt16
+    data4: [8]UInt8
+}
+
+struct EFI/BOOT/SERVICES {
+    hdr0: UInt64
+    hdr1: UInt64
+    hdr2: UInt64
+    raise/tpl: UInt64
+    restore/tpl: UInt64
+    allocate/pages: UInt64
+    free/pages: UInt64
+    get/memory/map: UInt64
+    allocate/pool: UInt64
+    free/pool: UInt64
+    create/event: UInt64
+    set/timer: UInt64
+    wait/for/event: UInt64
+    signal/event: UInt64
+    close/event: UInt64
+    check/event: UInt64
+    install/protocol/interface: UInt64
+    reinstall/protocol/interface: UInt64
+    uninstall/protocol/interface: UInt64
+    handle/protocol: UInt64
+    reserved: UInt64
+    register/protocol/notify: UInt64
+    locate/handle: UInt64
+    locate/path/node: UInt64
+    install/configuration/table: UInt64
+    image/load: UInt64
+    image/start: UInt64
+    exit: UInt64
+    image/unload: UInt64
+    exit/boot/services: UInt64
+    get/next/monotonic/count: UInt64
+    stall: UInt64
+    set/watchdog/timer: UInt64
+    connect/controller: UInt64
+    disconnect/controller: UInt64
+    open/protocol: UInt64
+    close/protocol: UInt64
+    open/protocol/information: UInt64
+    protocols/per/handle: UInt64
+    locate/handle/buffer: UInt64
+    locate/protocol: UInt64
+}
+
+struct EFI/SYSTEM/TABLE {
+    hdr0: UInt64
+    hdr1: UInt64
+    hdr2: UInt64
+    firmware/vendor: UInt64
+    firmware/revision: UInt32
+    pad0: UInt32
+    console/in/handle: UInt64
+    con/in: UInt64
+    console/out/handle: UInt64
+    con/out: UInt64
+    standard/error/handle: UInt64
+    std/err: UInt64
+    runtime/services: UInt64
+    boot/services: UInt64
+}
+
+@packed
+struct EFI/INPUT/KEY {
+    scan/code: UInt16
+    unicode/char: UInt16
+}
+
+@packed
+struct EFI/TIME {
+    year: UInt16
+    month: UInt8
+    day: UInt8
+    hour: UInt8
+    minute: UInt8
+    second: UInt8
+    pad0: UInt8
+    nanosecond: UInt32
+    timezone: UInt16
+    daylight: UInt8
+    pad1: UInt8
+}
+
+@packed
+struct EFI/GRAPHICS/OUTPUT/MODE/INFO {
+    version: UInt32
+    horizontal/resolution: UInt32
+    vertical/resolution: UInt32
+    pixel/format: UInt32
+    pixel/information: [4]UInt32
+    pixels/per/scan/line: UInt32
+}
+
+struct EFI/GRAPHICS/OUTPUT/PROTOCOL/MODE {
+    max/mode: UInt32
+    mode: UInt32
+    info: UInt64
+    size/of/info: UInt64
+    frame/buffer/base: UInt64
+    frame/buffer/size: UInt64
+}
+
+struct EFI/GRAPHICS/OUTPUT/PROTOCOL {
+    query/mode: UInt64
+    set/mode: UInt64
+    blt: UInt64
+    mode: UInt64
+}
+
+hardware func Abi/Call2(target: UInt64, a0: UInt64, a1: UInt64): UInt64 {
+    hardware {
+        var rax: reg<"rax", UInt64>
+        var rcx: reg<"rcx", UInt64>
+        var rdx: reg<"rdx", UInt64>
+        var rsp: reg<"rsp", UInt64>
+        var r8:  reg<"r8",  UInt64>  // 新增
+        var r9:  reg<"r9",  UInt64>  // 新增
+        var r10: reg<"r10", UInt64>
+        var r11: reg<"r11", UInt64>
+
+        let old/sp: UInt64 = rsp
+        let work/sp: UInt64 = old/sp - 48
+        let final/sp: UInt64 = work/sp - (work/sp % 16)
+
+        // 第 1 步：在 RSP 完好无损时，把所有需要读内存的变量装填到硬件寄存器隔离舱
+        r11 = final/sp
+        r10 = target
+        rcx = a0
+        rdx = a1
+
+        // 第 2 步：纯寄存器赋值！这绝对不会生成访问内存的指令，也不会污染 RAX
+        rsp = r11
+        rax = r10
+        hardware\isa\call()
+        
+        // 第 3 步：立即把函数返回值 (RAX) 转移到绝对安全的 R10 中保存
+        r10 = rax
+        
+        // 第 4 步：恢复堆栈。此时哪怕编译器使用 RAX 去读取 old/sp 我们也不在乎了！
+        rsp = old/sp
+        
+        // 第 5 步：从安全舱读取返回值并交回给 Aethelium
+        let ret/val: UInt64 = r10
+        return ret/val
+    }
+}
+
+hardware func Abi/Call3(target: UInt64, a0: UInt64, a1: UInt64, a2: UInt64): UInt64 {
+    hardware {
+        var rax: reg<"rax", UInt64>
+        var rcx: reg<"rcx", UInt64>
+        var rdx: reg<"rdx", UInt64>
+        var r8:  reg<"r8",  UInt64>
+        var rsp: reg<"rsp", UInt64>
+        var r9:  reg<"r9",  UInt64>  // 新增
+        var r10: reg<"r10", UInt64>
+        var r11: reg<"r11", UInt64>
+
+        let old/sp: UInt64 = rsp
+        let work/sp: UInt64 = old/sp - 48
+        let final/sp: UInt64 = work/sp - (work/sp % 16)
+
+        r11 = final/sp
+        r10 = target
+        rcx = a0
+        rdx = a1
+        r8  = a2
+
+        rsp = r11
+        rax = r10
+        hardware\isa\call()
+        
+        r10 = rax
+        rsp = old/sp
+        
+        let ret/val: UInt64 = r10
+        return ret/val
+    }
+}
+
+hardware func Abi/Call5(target: UInt64, a0: UInt64, a1: UInt64, a2: UInt64, a3: UInt64, a4: UInt64): UInt64 {
+    hardware {
+        var rax: reg<"rax", UInt64>
+        var rcx: reg<"rcx", UInt64>
+        var rdx: reg<"rdx", UInt64>
+        var r8:  reg<"r8",  UInt64>
+        var r9:  reg<"r9",  UInt64>
+        var rsp: reg<"rsp", UInt64>
+        var r10: reg<"r10", UInt64>
+        var r11: reg<"r11", UInt64>
+
+        let old/sp: UInt64 = rsp
+        let work/sp: UInt64 = old/sp - 64
+        let final/sp: UInt64 = work/sp - (work/sp % 16)
+
+        let arg5/slot: ptr<UInt64> = cast<ptr<UInt64>>(final/sp + 32)
+        arg5/slot[0] = a4
+
+        r11 = final/sp
+        r10 = target
+        rcx = a0
+        rdx = a1
+        r8  = a2
+        r9  = a3
+
+        rsp = r11
+        rax = r10
+        hardware\isa\call()
+        
+        r10 = rax
+        rsp = old/sp
+        
+        let ret/val: UInt64 = r10
+        return ret/val
+    }
+}
+
+func Dbg/Stage(code: UInt64) {
+    hardware {
+        hardware\isa\outport(0xE9, code)
+    }
+}
+
+func Dbg/HexN(value: UInt64) {
+    let ch: UInt64 = 48 + (value & 0xF)
+    if (value & 0xF) >= 10 {
+        ch = 55 + (value & 0xF)
+    }
+    Dbg/Stage(ch)
+}
+
+func Dbg/Qword(value: UInt64) {
+    Dbg/HexN((value >> 60) & 0xF)
+    Dbg/HexN((value >> 56) & 0xF)
+    Dbg/HexN((value >> 52) & 0xF)
+    Dbg/HexN((value >> 48) & 0xF)
+    Dbg/HexN((value >> 44) & 0xF)
+    Dbg/HexN((value >> 40) & 0xF)
+    Dbg/HexN((value >> 36) & 0xF)
+    Dbg/HexN((value >> 32) & 0xF)
+    Dbg/HexN((value >> 28) & 0xF)
+    Dbg/HexN((value >> 24) & 0xF)
+    Dbg/HexN((value >> 20) & 0xF)
+    Dbg/HexN((value >> 16) & 0xF)
+    Dbg/HexN((value >> 12) & 0xF)
+    Dbg/HexN((value >> 8) & 0xF)
+    Dbg/HexN((value >> 4) & 0xF)
+    Dbg/HexN(value & 0xF)
+    Dbg/Stage(10)
+}
+
+func Sys/Halt(sys/table: ptr<EFI/SYSTEM/TABLE>, code: UInt64) : UInt64 {
+    Dbg/Stage(code)
+    loop {
+        Sys/Stall(sys/table, 50000)
+        hardware {
+            hardware\isa\pause()
+        }
+    }
+    return code
+}
+
+func Mem/Zero(base: UInt64, bytes: UInt64) {
+    let i: UInt64 = 0
+    while i + 8 <= bytes {
+        let p64: ptr<UInt64> = cast<ptr<UInt64>>(base + i)
+        p64[0] = 0      // 修复：改用数组下标语法强制作内存写
+        i = i + 8
+    }
+    let p8: ptr<UInt8> = cast<ptr<UInt8>>(base)
+    while i < bytes {
+        p8[i] = 0
+        i = i + 1
+    }
+}
+
+func Mem/LoadU64(addr: UInt64) : UInt64 {
+    let p: ptr<UInt64> = cast<ptr<UInt64>>(addr)
+    return *p
+}
+
+func Mem/LoadU32(addr: UInt64) : UInt32 {
+    let p: ptr<UInt32> = cast<ptr<UInt32>>(addr)
+    return *p
+}
+
+func Gop/GuidB(out: ptr<EFI/GUID>) {
+    let raw: ptr<UInt8> = cast<ptr<UInt8>>(out)
+    raw[0] = 0xDE
+    raw[1] = 0xA9
+    raw[2] = 0x42
+    raw[3] = 0x90
+    raw[4] = 0xDC
+    raw[5] = 0x23
+    raw[6] = 0x38
+    raw[7] = 0x4A
+    raw[8] = 0x96
+    raw[9] = 0xFB
+    raw[10] = 0x7A
+    raw[11] = 0xDE
+    raw[12] = 0xD0
+    raw[13] = 0x80
+    raw[14] = 0x51
+    raw[15] = 0x6A
+}
+
+func Sys/BootS(sys/table: ptr<EFI/SYSTEM/TABLE>) : ptr<EFI/BOOT/SERVICES> {
+    let sys/base: UInt64 = cast<UInt64>(sys/table)
+    let bs/base: UInt64 = Mem/LoadU64(sys/base + ST/OFFSET/BOOT/SERVICES)
+    return cast<ptr<EFI/BOOT/SERVICES>>(bs/base)
+}
+
+func Io/ConI(sys/table: ptr<EFI/SYSTEM/TABLE>) : UInt64 {
+    let sys/base: UInt64 = cast<UInt64>(sys/table)
+    return Mem/LoadU64(sys/base + ST/OFFSET/CON/IN)
+}
+
+func Sys/RuntimeS(sys/table: ptr<EFI/SYSTEM/TABLE>) : UInt64 {
+    let sys/base: UInt64 = cast<UInt64>(sys/table)
+    return Mem/LoadU64(sys/base + ST/OFFSET/RUNTIME/SERVICES)
+}
+
+func Mem/AllocP(sys/table: ptr<EFI/SYSTEM/TABLE>, pool/bytes: UInt64) : UInt64 {
+    let out/value: UInt64 = 0
+    let bs: ptr<EFI/BOOT/SERVICES> = Sys/BootS(sys/table)
+    let out/ptr: UInt64 = cast<UInt64>(&out/value)
+    let bs/base: UInt64 = cast<UInt64>(bs)
+    let alloc/pool/fn: UInt64 = Mem/LoadU64(bs/base + BS/OFFSET/ALLOCATE/POOL)
+    let st: UInt64 = Abi/Call3(alloc/pool/fn, EFI/LOADER/DATA, pool/bytes, out/ptr)
+    if st != EFI/SUCCESS {
+        return 0
+    }
+    return out/value
+}
+
+func Mem/FreeP(sys/table: ptr<EFI/SYSTEM/TABLE>, buffer: UInt64) : UInt64 {
+    let bs: ptr<EFI/BOOT/SERVICES> = Sys/BootS(sys/table)
+    let bs/base: UInt64 = cast<UInt64>(bs)
+    let free/pool/fn: UInt64 = Mem/LoadU64(bs/base + BS/OFFSET/FREE/POOL)
+    return Abi/Call2(free/pool/fn, buffer, 0)
+}
+
+func Sys/Stall(sys/table: ptr<EFI/SYSTEM/TABLE>, usec: UInt64) : UInt64 {
+    let bs: ptr<EFI/BOOT/SERVICES> = Sys/BootS(sys/table)
+    let bs/base: UInt64 = cast<UInt64>(bs)
+    let stall/fn: UInt64 = Mem/LoadU64(bs/base + BS/OFFSET/STALL)
+    return Abi/Call2(stall/fn, usec, 0)
+}
+
+func Io/ReadK(sys/table: ptr<EFI/SYSTEM/TABLE>, key/out: ptr<EFI/INPUT/KEY>) : UInt64 {
+    let con/in: UInt64 = Io/ConI(sys/table)
+    if con/in == 0 {
+        return EFI/NOT/READY
+    }
+    let read/key/fn: UInt64 = Mem/LoadU64(con/in + 0x08)
+    if read/key/fn == 0 {
+        return EFI/NOT/READY
+    }
+    return Abi/Call2(read/key/fn, con/in, cast<UInt64>(key/out))
+}
+
+func Io/ResetI(sys/table: ptr<EFI/SYSTEM/TABLE>) : UInt64 {
+    let con/in: UInt64 = Io/ConI(sys/table)
+    if con/in == 0 {
+        return EFI/NOT/READY
+    }
+    let reset/fn: UInt64 = Mem/LoadU64(con/in)
+    if reset/fn == 0 {
+        return EFI/NOT/READY
+    }
+    return Abi/Call2(reset/fn, con/in, 0)
+}
+
+func Time/Get(sys/table: ptr<EFI/SYSTEM/TABLE>, time/out: ptr<EFI/TIME>) : UInt64 {
+    let rt: UInt64 = Sys/RuntimeS(sys/table)
+    if rt == 0 {
+        return 1
+    }
+    let get/time/fn: UInt64 = Mem/LoadU64(rt + RS/OFFSET/GET/TIME)
+    if get/time/fn == 0 {
+        return 1
+    }
+    return Abi/Call2(get/time/fn, cast<UInt64>(time/out), 0)
+}
+
+func Sys/DisableW(sys/table: ptr<EFI/SYSTEM/TABLE>) : UInt64 {
+    let bs: ptr<EFI/BOOT/SERVICES> = Sys/BootS(sys/table)
+    let bs/base: UInt64 = cast<UInt64>(bs)
+    let watchdog/fn: UInt64 = Mem/LoadU64(bs/base + BS/OFFSET/SET/WATCHDOG/TIMER)
+    if watchdog/fn == 0 {
+        return EFI/NOT/READY
+    }
+    return Abi/Call5(watchdog/fn, 0, 0, 0, 0, 0)
+}
+
+func Io/DrainI(sys/table: ptr<EFI/SYSTEM/TABLE>, max/keys: UInt64) : UInt64 {
+    let count: UInt64 = 0
+    let key: EFI/INPUT/KEY
+    while count < max/keys {
+        let st: UInt64 = Io/ReadK(sys/table, &key as ptr<EFI/INPUT/KEY>)
+        if st != EFI/SUCCESS {
+            return count
+        }
+        count = count + 1
+    }
+    return count
+}
+
+func Io/QuiesceI(sys/table: ptr<EFI/SYSTEM/TABLE>) : UInt64 {
+    let phase: UInt64 = 0
+    Io/ResetI(sys/table)
+    while phase < 4 {
+        Io/DrainI(sys/table, 32)
+        Sys/Stall(sys/table, 30000)
+        Io/ResetI(sys/table)
+        phase = phase + 1
+    }
+    Sys/Stall(sys/table, 120000)
+    return EFI/SUCCESS
+}
+
+func Mem/QueryM(sys/table: ptr<EFI/SYSTEM/TABLE>, total/mb/out: ptr<UInt32>, used/mb/out: ptr<UInt32>) : UInt64 {
+    let bs: ptr<EFI/BOOT/SERVICES> = Sys/BootS(sys/table)
+    let bs/base: UInt64 = cast<UInt64>(bs)
+    let get/map/fn: UInt64 = Mem/LoadU64(bs/base + BS/OFFSET/GET/MEMORY/MAP)
+    let map/bytes: UInt64 = 32768
+    let map/buffer: UInt64 = Mem/AllocP(sys/table, map/bytes)
+    let map/size: UInt64 = map/bytes
+    let map/key: UInt64 = 0
+    let desc/size: UInt64 = 0
+    let desc/version: UInt64 = 0
+    let total/pages: UInt64 = 0
+    let free/pages: UInt64 = 0
+    let off: UInt64 = 0
+
+    if get/map/fn == 0 || map/buffer == 0 {
+        total/mb/out[0] = 0
+        used/mb/out[0] = 0
+        return 1
+    }
+
+    let st: UInt64 = Abi/Call5(get/map/fn, cast<UInt64>(&map/size), map/buffer, cast<UInt64>(&map/key), cast<UInt64>(&desc/size), cast<UInt64>(&desc/version))
+    if st != EFI/SUCCESS || desc/size == 0 {
+        Mem/FreeP(sys/table, map/buffer)
+        total/mb/out[0] = 0
+        used/mb/out[0] = 0
+        return st
+    }
+
+    while off < map/size {
+        let desc/base: UInt64 = map/buffer + off
+        let mem/type: UInt32 = Mem/LoadU32(desc/base)
+        let pages: UInt64 = Mem/LoadU64(desc/base + 0x18)
+        total/pages = total/pages + pages
+        if mem/type == EFI/CONVENTIONAL/MEMORY {
+            free/pages = free/pages + pages
+        }
+        off = off + desc/size
+    }
+
+    Mem/FreeP(sys/table, map/buffer)
+
+    // 4096 / 1048576 = 1 / 256. 因此 pages / 256 即可得到 MB.
+    // 依然使用步进法绕开变量除法语法
+    let t/pages: UInt64 = total/pages
+    let u/pages: UInt64 = total/pages - free/pages
+    let t/mb: UInt64 = 0
+    let u/mb: UInt64 = 0
+    
+    // 简单的循环累加计算 MB (pages >> 8)
+    let i/t: UInt64 = 256
+    while i/t <= t/pages {
+        t/mb = t/mb + 1
+        i/t = i/t + 256
+    }
+    let i/u: UInt64 = 256
+    while i/u <= u/pages {
+        u/mb = u/mb + 1
+        i/u = i/u + 256
+    }
+
+    total/mb/out[0] = cast<UInt32>(t/mb)
+    used/mb/out[0] = cast<UInt32>(u/mb)
+    return EFI/SUCCESS
+}
+
+func Gop/Locate(sys/table: ptr<EFI/SYSTEM/TABLE>) : UInt64 {
+    let bs: ptr<EFI/BOOT/SERVICES> = Sys/BootS(sys/table)
+    let bs/base: UInt64 = cast<UInt64>(bs)
+    let locate/protocol/fn: UInt64 = Mem/LoadU64(bs/base + BS/OFFSET/LOCATE/PROTOCOL)
+    let locate/handle/buffer/fn: UInt64 = Mem/LoadU64(bs/base + BS/OFFSET/LOCATE/HANDLE/BUFFER)
+    let handle/protocol/fn: UInt64 = Mem/LoadU64(bs/base + BS/OFFSET/HANDLE/PROTOCOL)
+    let guid/value: EFI/GUID
+    let handle/count/value: UInt64 = 0
+    let handle/buffer/value: UInt64 = 0
+    let gop/value: UInt64 = 0
+
+    Gop/GuidB(&guid/value as ptr<EFI/GUID>)
+
+    if locate/protocol/fn != 0 {
+        Dbg/Stage(0x50)
+        let st0: UInt64 = Abi/Call3(locate/protocol/fn, cast<UInt64>(&guid/value), 0, cast<UInt64>(&gop/value))
+        if st0 == EFI/SUCCESS && gop/value != 0 {
+            Dbg/Stage(0x57)
+            return gop/value
+        }
+        Dbg/Stage(st0 & 0xFF)
+    }
+
+    if locate/handle/buffer/fn == 0 {
+        Dbg/Stage(0x52)
+        return 0
+    }
+    if handle/protocol/fn == 0 {
+        Dbg/Stage(0x54)
+        return 0
+    }
+
+    Dbg/Stage(0x55)
+    let st1: UInt64 = Abi/Call5(locate/handle/buffer/fn, EFI/LOCATE/BY/PROTOCOL, cast<UInt64>(&guid/value), 0, cast<UInt64>(&handle/count/value), cast<UInt64>(&handle/buffer/value))
+    if st1 != EFI/SUCCESS {
+        Dbg/Stage(st1 & 0xFF)
+        return 0
+    }
+    if handle/count/value == 0 || handle/buffer/value == 0 {
+        Dbg/Stage(0x53)
+        return 0
+    }
+
+    let first/handle: UInt64 = Mem/LoadU64(handle/buffer/value)
+    gop/value = 0
+    let st2: UInt64 = Abi/Call3(handle/protocol/fn, first/handle, cast<UInt64>(&guid/value), cast<UInt64>(&gop/value))
+    
+    // 清理 handle buffer 避免泄漏
+    Mem/FreeP(sys/table, handle/buffer/value)
+    
+    if st2 != EFI/SUCCESS {
+        Dbg/Stage(st2 & 0xFF)
+        return 0
+    }
+    if gop/value == 0 {
+        Dbg/Stage(0x56)
+        return 0
+    }
+    Dbg/Stage(0x57)
+    return gop/value
+}
+

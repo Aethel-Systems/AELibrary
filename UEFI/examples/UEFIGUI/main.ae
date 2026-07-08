@@ -1,0 +1,141 @@
+// ============================================================================
+// Aethelium UEFI GUI Dashboard - main.ae
+// 工业级高帧率实时遥测仪表盘
+// ============================================================================
+
+@entry
+@gate(type: \efi)
+func efi/main(image/handle: ptr<Void>, sys/table: ptr<EFI/SYSTEM/TABLE>) : UInt64 {
+    // 1. 禁用 UEFI Watchdog（避免系统在 5 分钟后因无活动被固件复位）
+    Sys/DisableW(sys/table)
+
+    // 2. 定位 UEFI 硬件图形输出协议 (GOP)
+    let gop: UInt64 = Gop/Locate(sys/table)
+    if gop == 0 {
+        return Sys/Halt(sys/table, 0x51) // GOP 未找到时抛出硬件异常代码
+    }
+
+    // 3. 初始化双缓冲区（将渲染数据完全隔离在离屏 Buffer 中以防闪烁）
+    var back: AER/BACK/BUFFER
+    if !Gfx/BufI(&back, gop, sys/table) {
+        return Sys/Halt(sys/table, 0x52)
+    }
+
+    // 4. 定义高清晰度工业 UI 文本样式（16色无阴影单色高反差）
+    var title/style: AER/TEXT/STYLE
+    title/style\color = 0xFFFFFFFF  // 亮白
+    title/style\glow/color = 0x00000000
+    title/style\shadow/color = 0x00000000
+    title/style\glow/alpha = 0
+    title/style\shadow/alpha = 0
+    title/style\scale = 2           // 双倍放大用于标题
+    title/style\tracking = 1
+
+    var label/style: AER/TEXT/STYLE
+    label/style\color = 0xFF8FB9E8  // 经典天蓝
+    label/style\glow/color = 0x00000000
+    label/style\shadow/color = 0x00000000
+    label/style\glow/alpha = 0
+    label/style\shadow/alpha = 0
+    label/style\scale = 1
+    label/style\tracking = 1
+
+    var warning/style: AER/TEXT/STYLE
+    warning/style\color = 0xFFE7A3A0  // 橙红色，用于醒目通知
+    warning/style\glow/color = 0x00000000
+    warning/style\shadow/color = 0x00000000
+    warning/style\glow/alpha = 0
+    warning/style\shadow/alpha = 0
+    warning/style\scale = 1
+    warning/style\tracking = 1
+
+    /* 数据追踪与统计变量 */
+    var total/mb: UInt32 = 0
+    var used/mb: UInt32 = 0
+    var time/now: EFI/TIME
+    var ticks: UInt64 = 0
+    var loop/active: Bool = true
+
+    /* === 提前构建静态区域（避免大面积循环重绘） === */
+    var whole/screen: AER/RECT
+    Gfx/RectS(&whole/screen as ptr<AER/RECT>, 0, 0, back\width, back\height)
+
+    fprintf(stderr, "[FIRMWARE-UI] Launching UI Loop...\n")
+
+    loop {
+        if !loop/active {
+            break
+        }
+
+        /* 1. 采集当前系统时钟与内存分配状态 */
+        if Time/Get(sys/table, &time/now as ptr<EFI/TIME>) == 0 {
+            /* 采集成功 */
+        }
+        
+        /* 为避免高频 I/O 导致卡顿，每 64 帧触发一次物理内存页重读 */
+        if (ticks & 63) == 0 {
+            Mem/QueryM(sys/table, &total/mb as ptr<UInt32>, &used/mb as ptr<UInt32>)
+        }
+
+        /* 2. 擦除画布并填充主色调 (深海蓝 0xFF0C1218) */
+        Gfx/FillR(&back, &whole/screen as ptr<AER/RECT>, 0xFF0C1218)
+
+        /* 3. 绘制标题栏（亮白底板 + 暗青文字） */
+        var title/rect: AER/RECT
+        Gfx/RectS(&title/rect as ptr<AER/RECT>, 0, 0, back\width, 42)
+        Gfx/FillR(&back, &title/rect as ptr<AER/RECT>, 0xFF3A6EA5)
+        
+        Gfx/DrawL(&back, 18, 12, 68, 65, 83, 72, 66, 79, 65, 82, 68, 0, 9, &title/style as ptr<AER/TEXT/STYLE>) // "DASHBOARD"
+
+        /* 4. 渲染内存监控卡片 */
+        // "MEMORY"
+        Gfx/DrawL(&back, 50, 100, 77, 69, 77, 79, 82, 89, 0, 0, 0, 0, 6, &label/style as ptr<AER/TEXT/STYLE>)
+        // "USED:"
+        Gfx/DrawL(&back, 50, 130, 85, 83, 69, 68, 0, 0, 0, 0, 0, 0, 4, &label/style as ptr<AER/TEXT/STYLE>)
+        Gfx/DrawU(&back, 150, 130, used/mb, 1, &title/style as ptr<AER/TEXT/STYLE>)
+        // "TOTAL:"
+        Gfx/DrawL(&back, 50, 160, 84, 79, 84, 65, 76, 0, 0, 0, 0, 0, 5, &label/style as ptr<AER/TEXT/STYLE>)
+        Gfx/DrawU(&back, 150, 160, total/mb, 1, &title/style as ptr<AER/TEXT/STYLE>)
+
+        /* 5. 渲染实时硬件时间卡片 */
+        // "TIME"
+        Gfx/DrawL(&back, 450, 100, 84, 73, 77, 69, 0, 0, 0, 0, 0, 0, 4, &label/style as ptr<AER/TEXT/STYLE>)
+        // 绘制 HH:MM:SS
+        Gfx/DrawT(&back, 450, 130, time/now\hour as UInt32, &title/style as ptr<AER/TEXT/STYLE>)
+        Gfx/DrawGL(&back, 475, 130, 58, 0xFFFFFFFF, 1, 255) // 冒号 ":"
+        Gfx/DrawT(&back, 490, 130, time/now\minute as UInt32, &title/style as ptr<AER/TEXT/STYLE>)
+        Gfx/DrawGL(&back, 515, 130, 58, 0xFFFFFFFF, 1, 255) // 冒号 ":"
+        Gfx/DrawT(&back, 530, 130, time/now\second as UInt32, &title/style as ptr<AER/TEXT/STYLE>)
+
+        /* 6. 绘制尾部控制台指南 */
+        // "PRESS ESC TO RET FIRMWARE"
+        Gfx/DrawL(&back, 50, back\height - 40, 80, 82, 69, 83, 83, 32, 69, 83, 67, 0, 9, &warning/style as ptr<AER/TEXT/STYLE>)
+
+        /* 7. 双缓冲同步：将渲染好的离屏 Buffer 整体刷写至物理显存 */
+        Gfx/FlushR(&back, &whole/screen as ptr<AER/RECT>)
+
+        /* 8. 非阻塞键盘轮询 */
+        var key: EFI/INPUT/KEY
+        if Io/ReadK(sys/table, &key) == 0 {
+            /* 如果按下了 Esc 键（ScanCode 0x17，即 23） */
+            if key\scan/code == 23 || key\unicode/char == 27 {
+                loop/active = false
+            }
+        }
+
+        /* 9. 精确帧率节拍控制（限制每帧循环大约 16ms，合 60 帧） */
+        Sys/Stall(sys/table, 16000)
+        ticks = ticks + 1
+    }
+
+    /* 清理屏幕，关闭并安全退出 */
+    Gfx/FillR(&back, &whole/screen as ptr<AER/RECT>, 0x00000000)
+    Gfx/FlushR(&back, &whole/screen as ptr<AER/RECT>)
+
+    /* 物理退还缓存池以防泄露 */
+    if back\base != 0 && back\base != back\frame/buffer {
+        Mem/FreeP(sys/table, back\base)
+    }
+
+    return Io/QuiesceI(sys/table)
+}
