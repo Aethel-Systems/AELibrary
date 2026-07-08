@@ -1,0 +1,429 @@
+// -----------------------------------------------------------------------------
+// Core/IO/winFile - 底层文件与目录操作
+// Architecture: Direct Native NT System Call Mapping (ntdll.dll)
+// -----------------------------------------------------------------------------
+
+@packed
+struct Core/IO/UnicodeString {
+    length: UInt16
+    maximum/length: UInt16
+    pad: UInt32
+    buffer: ptr<UInt16>
+}
+
+@packed
+struct Core/IO/ObjectAttributes {
+    length: UInt32
+    pad1: UInt32
+    root/directory: ptr<Void>
+    object/name: ptr<Core/IO/UnicodeString>
+    attributes: UInt32
+    pad2: UInt32
+    security/descriptor: ptr<Void>
+    security/quality/of/service: ptr<Void>
+}
+
+@packed
+struct Core/IO/IoStatusBlock {
+    status: UInt32
+    pad1: UInt32
+    information: ptr<Void>
+}
+
+@packed
+struct Core/IO/FileBasicInformation {
+    creation/time: Int64
+    last/access/time: Int64
+    last/write/time: Int64
+    change/time: Int64
+    file/attributes: UInt32
+    pad: UInt32
+}
+
+@packed
+struct Core/IO/FileStandardInformation {
+    allocation/size: Int64
+    end/of/file: Int64
+    number/of/links: UInt32
+    delete/pending: UInt8
+    directory: UInt8
+    pad: UInt16
+}
+
+@packed
+struct Core/IO/FileDispositionInformation {
+    delete/file: UInt8
+}
+
+// 辅助函数：将常规 DOS 路径透明转换为 NT 原生态命名空间前缀 (\??\C:\...)
+func File/build/nt/path(dos/path: ptr<UInt16>, nt/path/buf: ptr<UInt16>) : UInt16 {
+    var skip: Bool = false
+    if dos/path[0] == 92 && dos/path[1] == 63 && dos/path[2] == 63 && dos/path[3] == 92 {
+        skip = true
+    }
+    
+    var offset: UInt64 = 0
+    if !skip {
+        nt/path/buf[0] = 92 as UInt16 // '\'
+        nt/path/buf[1] = 63 as UInt16 // '?'
+        nt/path/buf[2] = 63 as UInt16 // '?'
+        nt/path/buf[3] = 92 as UInt16 // '\'
+        offset = 4
+    }
+    
+    var i: UInt64 = 0
+    var active: Bool = true
+    while active {
+        let c: UInt16 = dos/path[i]
+        nt/path/buf[offset + i] = c
+        if c == 0 {
+            active = false
+        }
+        i = i + 1
+    }
+    return ((offset + i - 1) * 2) as UInt16
+}
+
+// 判定指定路径的文件或文件夹是否存在
+func File/Exists(path: ptr<UInt16>) : Bool {
+    var nt/path: [512]UInt16
+    let len: UInt16 = File/build/nt/path(path, &nt/path as ptr<UInt16>)
+    
+    var ustr: Core/IO/UnicodeString
+    ustr\length = len
+    ustr\maximum/length = len
+    ustr\pad = 0
+    ustr\buffer = &nt/path as ptr<UInt16>
+    
+    var obj/attrs: Core/IO/ObjectAttributes
+    obj/attrs\length = 48
+    obj/attrs\pad1 = 0
+    obj/attrs\root/directory = nil
+    obj/attrs\object/name = &ustr
+    obj/attrs\attributes = 0x00000040 // OBJ_CASE_INSENSITIVE
+    obj/attrs\pad2 = 0
+    obj/attrs\security/descriptor = nil
+    obj/attrs\security/quality/of/service = nil
+    
+    var basic/info: Core/IO/FileBasicInformation
+    var status: UInt32 = 0
+    win {
+        status = ntdll/NtQueryAttributesFile(&obj/attrs, &basic/info) as UInt32
+    }
+    return status == 0
+}
+
+// 获取指定文件的大小 (字节)
+func File/Size(path: ptr<UInt16>) : UInt64 {
+    var nt/path: [512]UInt16
+    let len: UInt16 = File/build/nt/path(path, &nt/path as ptr<UInt16>)
+    
+    var ustr: Core/IO/UnicodeString
+    ustr\length = len
+    ustr\maximum/length = len
+    ustr\pad = 0
+    ustr\buffer = &nt/path as ptr<UInt16>
+    
+    var obj/attrs: Core/IO/ObjectAttributes
+    obj/attrs\length = 48
+    obj/attrs\pad1 = 0
+    obj/attrs\root/directory = nil
+    obj/attrs\object/name = &ustr
+    obj/attrs\attributes = 0x00000040 // OBJ_CASE_INSENSITIVE
+    obj/attrs\pad2 = 0
+    obj/attrs\security/descriptor = nil
+    obj/attrs\security/quality/of/service = nil
+    
+    var handle: UInt64 = 0
+    var io/status: Core/IO/IoStatusBlock
+    var status: UInt32 = 0
+    
+    win {
+        status = ntdll/NtOpenFile(
+            &handle,
+            0x00100000 | 0x00000001, // SYNCHRONIZE | FILE_READ_DATA
+            &obj/attrs,
+            &io/status,
+            7, // FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
+            0x00000020 // FILE_SYNCHRONOUS_IO_NONALERT
+        ) as UInt32
+    }
+    if status != 0 {
+        return 0
+    }
+    
+    var std/info: Core/IO/FileStandardInformation
+    win {
+        status = ntdll/NtQueryInformationFile(
+            handle,
+            &io/status,
+            &std/info,
+            24, // sizeof(FileStandardInformation) = 24
+            5 // FileStandardInformation
+        ) as UInt32
+    }
+    win {
+        ntdll/NtClose(handle)
+    }
+    if status != 0 {
+        return 0
+    }
+    return std/info\end/of/file as UInt64
+}
+
+// 读取目标路径的底层系统属性 (如 Read-only, Hidden, Directory)
+func File/Attrib(path: ptr<UInt16>) : UInt32 {
+    var nt/path: [512]UInt16
+    let len: UInt16 = File/build/nt/path(path, &nt/path as ptr<UInt16>)
+    
+    var ustr: Core/IO/UnicodeString
+    ustr\length = len
+    ustr\maximum/length = len
+    ustr\pad = 0
+    ustr\buffer = &nt/path as ptr<UInt16>
+    
+    var obj/attrs: Core/IO/ObjectAttributes
+    obj/attrs\length = 48
+    obj/attrs\pad1 = 0
+    obj/attrs\root/directory = nil
+    obj/attrs\object/name = &ustr
+    obj/attrs\attributes = 0x00000040 // OBJ_CASE_INSENSITIVE
+    obj/attrs\pad2 = 0
+    obj/attrs\security/descriptor = nil
+    obj/attrs\security/quality/of/service = nil
+    
+    var basic/info: Core/IO/FileBasicInformation
+    var status: UInt32 = 0
+    win {
+        status = ntdll/NtQueryAttributesFile(&obj/attrs, &basic/info) as UInt32
+    }
+    if status != 0 {
+        return 0xFFFFFFFF as UInt32
+    }
+    return basic/info\file/attributes
+}
+
+// 修改目标文件的属性
+func File/SetA(path: ptr<UInt16>, attrs: UInt32) : Bool {
+    var nt/path: [512]UInt16
+    let len: UInt16 = File/build/nt/path(path, &nt/path as ptr<UInt16>)
+    
+    var ustr: Core/IO/UnicodeString
+    ustr\length = len
+    ustr\maximum/length = len
+    ustr\pad = 0
+    ustr\buffer = &nt/path as ptr<UInt16>
+    
+    var obj/attrs: Core/IO/ObjectAttributes
+    obj/attrs\length = 48
+    obj/attrs\pad1 = 0
+    obj/attrs\root/directory = nil
+    obj/attrs\object/name = &ustr
+    obj/attrs\attributes = 0x00000040 // OBJ_CASE_INSENSITIVE
+    obj/attrs\pad2 = 0
+    obj/attrs\security/descriptor = nil
+    obj/attrs\security/quality/of/service = nil
+    
+    var handle: UInt64 = 0
+    var io/status: Core/IO/IoStatusBlock
+    var status: UInt32 = 0
+    
+    win {
+        status = ntdll/NtOpenFile(
+            &handle,
+            0x00100000 | 0x00000100, // SYNCHRONIZE | FILE_WRITE_ATTRIBUTES
+            &obj/attrs,
+            &io/status,
+            7, // FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
+            0x00000020 // FILE_SYNCHRONOUS_IO_NONALERT
+        ) as UInt32
+    }
+    if status != 0 {
+        return false
+    }
+    
+    var basic/info: Core/IO/FileBasicInformation
+    basic/info\creation/time = 0
+    basic/info\last/access/time = 0
+    basic/info\last/write/time = 0
+    basic/info\change/time = 0
+    basic/info\file/attributes = attrs
+    basic/info\pad = 0
+    
+    win {
+        status = ntdll/NtSetInformationFile(
+            handle,
+            &io/status,
+            &basic/info,
+            40, // sizeof(FileBasicInformation) = 40
+            4 // FileBasicInformation
+        ) as UInt32
+    }
+    win {
+        ntdll/NtClose(handle)
+    }
+    return status == 0
+}
+
+// 底层强制删除指定文件
+func File/Del(path: ptr<UInt16>) : Bool {
+    var nt/path: [512]UInt16
+    let len: UInt16 = File/build/nt/path(path, &nt/path as ptr<UInt16>)
+    
+    var ustr: Core/IO/UnicodeString
+    ustr\length = len
+    ustr\maximum/length = len
+    ustr\pad = 0
+    ustr\buffer = &nt/path as ptr<UInt16>
+    
+    var obj/attrs: Core/IO/ObjectAttributes
+    obj/attrs\length = 48
+    obj/attrs\pad1 = 0
+    obj/attrs\root/directory = nil
+    obj/attrs\object/name = &ustr
+    obj/attrs\attributes = 0x00000040 // OBJ_CASE_INSENSITIVE
+    obj/attrs\pad2 = 0
+    obj/attrs\security/descriptor = nil
+    obj/attrs\security/quality/of/service = nil
+    
+    var handle: UInt64 = 0
+    var io/status: Core/IO/IoStatusBlock
+    var status: UInt32 = 0
+    
+    win {
+        status = ntdll/NtOpenFile(
+            &handle,
+            0x00010000, // DELETE
+            &obj/attrs,
+            &io/status,
+            7, // FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
+            0x00000040 // FILE_NON_DIRECTORY_FILE
+        ) as UInt32
+    }
+    if status != 0 {
+        return false
+    }
+    
+    var disp/info: Core/IO/FileDispositionInformation
+    disp/info\delete/file = 1
+    
+    win {
+        status = ntdll/NtSetInformationFile(
+            handle,
+            &io/status,
+            &disp/info,
+            1,
+            13 // FileDispositionInformation
+        ) as UInt32
+    }
+    win {
+        ntdll/NtClose(handle)
+    }
+    return status == 0
+}
+
+// 创建单层目录
+func File/CreateD(path: ptr<UInt16>) : Bool {
+    var nt/path: [512]UInt16
+    let len: UInt16 = File/build/nt/path(path, &nt/path as ptr<UInt16>)
+    
+    var ustr: Core/IO/UnicodeString
+    ustr\length = len
+    ustr\maximum/length = len
+    ustr\pad = 0
+    ustr\buffer = &nt/path as ptr<UInt16>
+    
+    var obj/attrs: Core/IO/ObjectAttributes
+    obj/attrs\length = 48
+    obj/attrs\pad1 = 0
+    obj/attrs\root/directory = nil
+    obj/attrs\object/name = &ustr
+    obj/attrs\attributes = 0x00000040 // OBJ_CASE_INSENSITIVE
+    obj/attrs\pad2 = 0
+    obj/attrs\security/descriptor = nil
+    obj/attrs\security/quality/of/service = nil
+    
+    var handle: UInt64 = 0
+    var io/status: Core/IO/IoStatusBlock
+    var status: UInt32 = 0
+    
+    win {
+        status = ntdll/NtCreateFile(
+            &handle,
+            0x00100000 | 0x00000001, // SYNCHRONIZE | FILE_LIST_DIRECTORY
+            &obj/attrs,
+            &io/status,
+            nil,
+            0,
+            7, // FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
+            2, // FILE_CREATE
+            0x00000020 | 0x00000001, // FILE_SYNCHRONOUS_IO_NONALERT | FILE_DIRECTORY_FILE
+            nil,
+            0
+        ) as UInt32
+    }
+    if status != 0 {
+        return false
+    }
+    win {
+        ntdll/NtClose(handle)
+    }
+    return true
+}
+
+// 移除空文件夹
+func File/RemoveD(path: ptr<UInt16>) : Bool {
+    var nt/path: [512]UInt16
+    let len: UInt16 = File/build/nt/path(path, &nt/path as ptr<UInt16>)
+    
+    var ustr: Core/IO/UnicodeString
+    ustr\length = len
+    ustr\maximum/length = len
+    ustr\pad = 0
+    ustr\buffer = &nt/path as ptr<UInt16>
+    
+    var obj/attrs: Core/IO/ObjectAttributes
+    obj/attrs\length = 48
+    obj/attrs\pad1 = 0
+    obj/attrs\root/directory = nil
+    obj/attrs\object/name = &ustr
+    obj/attrs\attributes = 0x00000040 // OBJ_CASE_INSENSITIVE
+    obj/attrs\pad2 = 0
+    obj/attrs\security/descriptor = nil
+    obj/attrs\security/quality/of/service = nil
+    
+    var handle: UInt64 = 0
+    var io/status: Core/IO/IoStatusBlock
+    var status: UInt32 = 0
+    
+    win {
+        status = ntdll/NtOpenFile(
+            &handle,
+            0x00010000, // DELETE
+            &obj/attrs,
+            &io/status,
+            7, // FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
+            0x00000001 // FILE_DIRECTORY_FILE (指示目标为文件夹)
+        ) as UInt32
+    }
+    if status != 0 {
+        return false
+    }
+    
+    var disp/info: Core/IO/FileDispositionInformation
+    disp/info\delete/file = 1
+    
+    win {
+        status = ntdll/NtSetInformationFile(
+            handle,
+            &io/status,
+            &disp/info,
+            1,
+            13 // FileDispositionInformation
+        ) as UInt32
+    }
+    win {
+        ntdll/NtClose(handle)
+    }
+    return status == 0
+}

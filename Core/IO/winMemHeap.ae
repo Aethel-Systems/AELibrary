@@ -1,0 +1,53 @@
+// -----------------------------------------------------------------------------
+// Core/IO/winMemHeap - 微粒度高级进程堆内存安全分配器
+// Architecture: Direct Process Environment Block (PEB) heap lookup & Rtl heap APIs
+// -----------------------------------------------------------------------------
+
+// 从 TEB/PEB 直接安全解析当前进程的进程默认堆句柄，实现纯正零环级用户态控制
+func Mem/get/heap() : ptr<Void> {
+    var teb/reg: reg<"r14", UInt64>
+    let teb: UInt64 = teb/reg
+    let peb: UInt64 = cast<ptr<UInt64>>(teb + 0x60)[0]
+    return cast<ptr<Void>>(cast<ptr<UInt64>>(peb + 0x30)[0]) // Offset 0x30 is ProcessHeap on Windows x64
+}
+
+// 在当前进程的内部堆中分配指定字节的内存空间 (带有 HEAP_ZERO_MEMORY 坚固化保护)
+func Mem/Alloc(size: UInt64) : ptr<Void> {
+    let heap: ptr<Void> = Mem/get/heap()
+    if heap == nil {
+        return nil
+    }
+    win {
+        // HEAP_ZERO_MEMORY = 0x00000008 (强制分配时清零以防止野指针与脏内存读取)
+        return ntdll/RtlAllocateHeap(heap, 8, size) as ptr<Void>
+    }
+}
+
+// 将已分配的堆空间返还进程堆管理器
+func Mem/Free(address: ptr<Void>) : Void {
+    if address == nil {
+        return
+    }
+    let heap: ptr<Void> = Mem/get/heap()
+    if heap == nil {
+        return
+    }
+    win {
+        ntdll/RtlFreeHeap(heap, 0, address)
+    }
+}
+
+// 重新调整当前堆内存的大小，支持就地扩展或高速数据复制
+func Mem/Realloc(address: ptr<Void>, size: UInt64) : ptr<Void> {
+    let heap: ptr<Void> = Mem/get/heap()
+    if heap == nil {
+        return nil
+    }
+    if address == nil {
+        return Mem/Alloc(size)
+    }
+    win {
+        // HEAP_ZERO_MEMORY = 0x00000008
+        return ntdll/RtlReAllocateHeap(heap, 8, address, size) as ptr<Void>
+    }
+}

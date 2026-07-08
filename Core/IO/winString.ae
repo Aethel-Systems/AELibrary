@@ -1,0 +1,229 @@
+// -----------------------------------------------------------------------------
+// Core/IO/winString - 基础文本与宽字符高级安全转换转换
+// Architecture: Direct Memory Algorithms / Zero-Allocation Pipelines
+// -----------------------------------------------------------------------------
+
+// 将本地 ANSI 字符串转换为 UTF-16 宽字符
+func Wstr/FromA(src: ptr<UInt8>, dst: ptr<UInt16>) : Void {
+    var i: UInt64 = 0
+    var j: UInt64 = 0
+    var active: Bool = true
+    while active {
+        let c1: UInt8 = src[i]
+        if c1 == 0 {
+            dst[j] = 0 as UInt16
+            active = false
+        } else if c1 < 128 {
+            dst[j] = c1 as UInt16
+            i = i + 1
+            j = j + 1
+        } else if (c1 & 224) == 192 {
+            let c2: UInt8 = src[i + 1]
+            let cp: UInt32 = ((c1 as UInt32 & 31) << 6) | (c2 as UInt32 & 63)
+            dst[j] = cp as UInt16
+            i = i + 2
+            j = j + 1
+        } else if (c1 & 240) == 224 {
+            let c2: UInt8 = src[i + 1]
+            let c3: UInt8 = src[i + 2]
+            let cp: UInt32 = ((c1 as UInt32 & 15) << 12) | ((c2 as UInt32 & 63) << 6) | (c3 as UInt32 & 63)
+            dst[j] = cp as UInt16
+            i = i + 3
+            j = j + 1
+        } else if (c1 & 248) == 240 {
+            let c2: UInt8 = src[i + 1]
+            let c3: UInt8 = src[i + 2]
+            let c4: UInt8 = src[i + 3]
+            var cp: UInt32 = ((c1 as UInt32 & 7) << 18) | ((c2 as UInt32 & 63) << 12) | ((c3 as UInt32 & 63) << 6) | (c4 as UInt32 & 63)
+            cp = cp - 65536
+            let high: UInt16 = (55296 + (cp >> 10)) as UInt16
+            let low: UInt16 = (56320 + (cp & 1023)) as UInt16
+            dst[j] = high
+            dst[j + 1] = low
+            i = i + 4
+            j = j + 2
+        } else {
+            dst[j] = 65533 as UInt16 // U+FFFD (Replacement Character) 拦截非法编码
+            i = i + 1
+            j = j + 1
+        }
+    }
+}
+
+// 将 UTF-8 字符串安全解码为 UTF-16 宽字符 (工业级完整变长状态机)
+func Wstr/FromU(src: ptr<UInt8>, dst: ptr<UInt16>) : Void {
+    var i: UInt64 = 0
+    var j: UInt64 = 0
+    var active: Bool = true
+    while active {
+        let c1: UInt8 = src[i]
+        if c1 == 0 {
+            dst[j] = 0 as UInt16
+            active = false
+        } else if c1 < 128 {
+            dst[j] = c1 as UInt16
+            i = i + 1
+            j = j + 1
+        } else if (c1 & 224) == 192 {
+            let c2: UInt8 = src[i + 1]
+            let cp: UInt32 = ((c1 as UInt32 & 31) << 6) | (c2 as UInt32 & 63)
+            dst[j] = cp as UInt16
+            i = i + 2
+            j = j + 1
+        } else if (c1 & 240) == 224 {
+            let c2: UInt8 = src[i + 1]
+            let c3: UInt8 = src[i + 2]
+            let cp: UInt32 = ((c1 as UInt32 & 15) << 12) | ((c2 as UInt32 & 63) << 6) | (c3 as UInt32 & 63)
+            dst[j] = cp as UInt16
+            i = i + 3
+            j = j + 1
+        } else if (c1 & 248) == 240 {
+            let c2: UInt8 = src[i + 1]
+            let c3: UInt8 = src[i + 2]
+            let c4: UInt8 = src[i + 3]
+            var cp: UInt32 = ((c1 as UInt32 & 7) << 18) | ((c2 as UInt32 & 63) << 12) | ((c3 as UInt32 & 63) << 6) | (c4 as UInt32 & 63)
+            cp = cp - 65536
+            let high: UInt16 = (55296 + (cp >> 10)) as UInt16
+            let low: UInt16 = (56320 + (cp & 1023)) as UInt16
+            dst[j] = high
+            dst[j + 1] = low
+            i = i + 4
+            j = j + 2
+        } else {
+            dst[j] = 63 as UInt16 // 回退字符 '?'
+            i = i + 1
+            j = j + 1
+        }
+    }
+}
+
+// 将 UTF-16 宽字符安全、无损地编码为底层 UTF-8 字节序列 (工业级完整变长状态机)
+// 彻底废弃截断式降级，提供完美的中文字符回路解析
+func Str/FromW(src: ptr<UInt16>, dst: ptr<UInt8>) : Void {
+    var i: UInt64 = 0
+    var j: UInt64 = 0
+    var active: Bool = true
+    while active {
+        let c1: UInt16 = src[i]
+        if c1 == 0 {
+            dst[j] = 0 as UInt8
+            active = false
+        } else if c1 < 128 {
+            dst[j] = c1 as UInt8
+            i = i + 1
+            j = j + 1
+        } else if c1 < 2048 {
+            dst[j] = (192 | (c1 >> 6)) as UInt8
+            dst[j + 1] = (128 | (c1 & 63)) as UInt8
+            i = i + 1
+            j = j + 2
+        } else if c1 >= 55296 && c1 <= 56319 { // High surrogate (代理对高位)
+            let c2: UInt16 = src[i + 1]
+            if c2 >= 56320 && c2 <= 57343 { // Low surrogate (代理对低位)
+                let cp: UInt32 = (((c1 as UInt32 & 1023) << 10) | (c2 as UInt32 & 1023)) + 65536
+                dst[j] = (240 | (cp >> 18)) as UInt8
+                dst[j + 1] = (128 | ((cp >> 12) & 63)) as UInt8
+                dst[j + 2] = (128 | ((cp >> 6) & 63)) as UInt8
+                dst[j + 3] = (128 | (cp & 63)) as UInt8
+                i = i + 2
+                j = j + 4
+            } else {
+                // 无效代理对恢复为 U+FFFD (EF BF BD)
+                dst[j] = 239 as UInt8
+                dst[j + 1] = 191 as UInt8
+                dst[j + 2] = 189 as UInt8
+                i = i + 1
+                j = j + 3
+            }
+        } else {
+            dst[j] = (224 | (c1 >> 12)) as UInt8
+            dst[j + 1] = (128 | ((c1 >> 6) & 63)) as UInt8
+            dst[j + 2] = (128 | (c1 & 63)) as UInt8
+            i = i + 1
+            j = j + 3
+        }
+    }
+}
+
+// 宽字符内存安全拷贝
+func Wstr/Copy(dst: ptr<UInt16>, src: ptr<UInt16>) : Void {
+    var i: UInt64 = 0
+    var active: Bool = true
+    while active {
+        let c: UInt16 = src[i]
+        dst[i] = c
+        if c == 0 {
+            active = false
+        }
+        i = i + 1
+    }
+}
+
+// 宽字符字符串拼接
+func Wstr/Cat(dst: ptr<UInt16>, src: ptr<UInt16>) : Void {
+    var i: UInt64 = 0
+    while dst[i] != 0 {
+        i = i + 1
+    }
+    var j: UInt64 = 0
+    var active: Bool = true
+    while active {
+        let c: UInt16 = src[j]
+        dst[i + j] = c
+        if c == 0 {
+            active = false
+        }
+        j = j + 1
+    }
+}
+
+// 获取宽字符字符串长度
+func Wstr/Len(str: ptr<UInt16>) : UInt64 {
+    var i: UInt64 = 0
+    while str[i] != 0 {
+        i = i + 1
+    }
+    return i
+}
+
+// 区分大小写的宽字符完全匹配比对
+func Wstr/MatchC(str1: ptr<UInt16>, str2: ptr<UInt16>) : Bool {
+    var i: UInt64 = 0
+    var active: Bool = true
+    while active {
+        let c1: UInt16 = str1[i]
+        let c2: UInt16 = str2[i]
+        if c1 != c2 {
+            return false
+        }
+        if c1 == 0 {
+            active = false
+        }
+        i = i + 1
+    }
+    return true
+}
+
+// 不区分大小写的宽字符完全匹配比对
+func Wstr/MatchN(str1: ptr<UInt16>, str2: ptr<UInt16>) : Bool {
+    var i: UInt64 = 0
+    var active: Bool = true
+    while active {
+        var c1: UInt16 = str1[i]
+        var c2: UInt16 = str2[i]
+        if c1 >= 65 && c1 <= 90 {
+            c1 = c1 + 32
+        }
+        if c2 >= 65 && c2 <= 90 {
+            c2 = c2 + 32
+        }
+        if c1 != c2 {
+            return false
+        }
+        if c1 == 0 {
+            active = false
+        }
+        i = i + 1
+    }
+    return true
+}

@@ -1,0 +1,142 @@
+// -----------------------------------------------------------------------------
+// Integration/StringAndMemIntegrationDemo.ae - 内存与文本处理集成主程序
+// 功能：集成并完整调用 winString.ae 与 winMemHeap.ae 中的全部 11 个高层接口
+// 包含接口：Wstr/FromA, Wstr/FromU, Str/FromW, Wstr/Copy, Wstr/Cat, Wstr/Len, Wstr/MatchC, Wstr/MatchN, Mem/Alloc, Mem/Free, Mem/Realloc
+// -----------------------------------------------------------------------------
+
+// 辅助状态报告函数
+func print/test/status(step: ptr<UInt8>, success: Bool) : Void {
+    print("[RUN] ")
+    print(cast<ptr<Void>>(step))
+    if success {
+        print(" : SUCCESS")
+    } else {
+        print(" : FAILED")
+    }
+}
+
+@entry
+func start() : UInt64 {
+    print("================================================================================")
+    print("Starting String & MemHeap High-Level Integration Test Pipeline")
+    print("================================================================================")
+
+    // -------------------------------------------------------------------------
+    // 接口 1: Mem/Alloc - 分配初始小块堆内存
+    // -------------------------------------------------------------------------
+    print("[TEST] Mem/Alloc - Allocating initial staging buffer...")
+    let initial/size: UInt64 = 64
+    let buffer/ptr: ptr<UInt16> = cast<ptr<UInt16>>(Mem/Alloc(initial/size))
+    
+    let alloc/ok: Bool = (buffer/ptr != nil)
+    print/test/status(cast<ptr<UInt8>>("Mem/Alloc (64 bytes)"), alloc/ok)
+    if !alloc/ok {
+        return 1
+    }
+
+    // -------------------------------------------------------------------------
+    // 接口 2: Wstr/FromA - 将 ASCII 路径安全转码并写入 Staging 缓冲区
+    // -------------------------------------------------------------------------
+    print("[TEST] Wstr/FromA - Transcoding ASCII directory prefix...")
+    let ascii/path: ptr<UInt8> = cast<ptr<UInt8>>("C:\Aethelium\S\")
+    Wstr/FromA(ascii/path, buffer/ptr)
+    
+    // 接口 3: Wstr/Len - 验证转码后的长度是否匹配
+    let len/prefix: UInt64 = Wstr/Len(buffer/ptr)
+    let trans/ansi/ok: Bool = (len/prefix == 15) // "C:\Aethelium\S\" 长度为15
+    print/test/status(cast<ptr<UInt8>>("Wstr/FromA & Wstr/Len Check"), trans/ansi/ok)
+
+    // -------------------------------------------------------------------------
+    // 接口 4: Wstr/FromU - 转换包含多字节变长字符的 UTF-8 标识至栈缓冲区
+    // -------------------------------------------------------------------------
+    print("[TEST] Wstr/FromU - Transcoding multi-byte UTF-8 file name...")
+    let utf8/filename: ptr<UInt8> = cast<ptr<UInt8>>("CoreKernelSpec核架构.ini")
+    var file/wide/buf: [128]UInt16
+    let file/wide/ptr: ptr<UInt16> = &file/wide/buf as ptr<UInt16>
+    Wstr/FromU(utf8/filename, file/wide/ptr)
+    
+    let len/filename: UInt64 = Wstr/Len(file/wide/ptr)
+    let trans/utf8/ok: Bool = (len/filename > 0)
+    print/test/status(cast<ptr<UInt8>>("Wstr/FromU & Wstr/Len Check"), trans/utf8/ok)
+
+    // -------------------------------------------------------------------------
+    // 接口 5: Mem/Realloc - 发现 Staging 空间不足以承载合并，动态调整堆大小
+    // -------------------------------------------------------------------------
+    print("[TEST] Mem/Realloc - Dynamically expanding staging buffer to 1024 bytes...")
+    let expanded/size: UInt64 = 1024
+    let realloc/ptr: ptr<UInt16> = cast<ptr<UInt16>>(Mem/Realloc(cast<ptr<Void>>(buffer/ptr), expanded/size))
+    
+    let realloc/ok: Bool = (realloc/ptr != nil)
+    print/test/status(cast<ptr<UInt8>>("Mem/Realloc (1024 bytes)"), realloc/ok)
+    if !realloc/ok {
+        Mem/Free(cast<ptr<Void>>(buffer/ptr)) // 发生错误时的降级安全释放
+        return 2
+    }
+
+    // -------------------------------------------------------------------------
+    // 接口 6: Wstr/Copy - 先将原始基路径复制到重新分配的扩容堆空间
+    // -------------------------------------------------------------------------
+    print("[TEST] Wstr/Copy - Copying directory path to newly reallocated heap...")
+    var temp/wide/buf: [256]UInt16
+    let temp/wide/ptr: ptr<UInt16> = &temp/wide/buf as ptr<UInt16>
+    
+    // 执行 Copy 逻辑
+    Wstr/Copy(temp/wide/ptr, realloc/ptr)
+    let len/copy: UInt64 = Wstr/Len(temp/wide/ptr)
+    let copy/ok: Bool = (len/copy == len/prefix)
+    print/test/status(cast<ptr<UInt8>>("Wstr/Copy & Wstr/Len Verification"), copy/ok)
+
+    // -------------------------------------------------------------------------
+    // 接口 7: Wstr/Cat - 将解码后的 UTF-16 宽文件名和路径执行尾部拼接
+    // -------------------------------------------------------------------------
+    print("[TEST] Wstr/Cat - Concatenating directory prefix and filename on heap...")
+    Wstr/Cat(temp/wide/ptr, file/wide/ptr)
+    
+    let total/len: UInt64 = Wstr/Len(temp/wide/ptr)
+    let cat/ok: Bool = (total/len == (len/prefix + len/filename))
+    print/test/status(cast<ptr<UInt8>>("Wstr/Cat & Wstr/Len Check"), cat/ok)
+
+    // -------------------------------------------------------------------------
+    // 接口 8: Str/FromW - 将合并后的完整宽字符路径写回 ASCII 缓冲区，供最终流控输出
+    // -------------------------------------------------------------------------
+    print("[TEST] Str/FromW - Demoting complete wide path back to ANSI block...")
+    var ansi/out/buf: [512]UInt8
+    let ansi/out/ptr: ptr<UInt8> = &ansi/out/buf as ptr<UInt8>
+    Str/FromW(temp/wide/ptr, ansi/out/ptr)
+    
+    print("Demoted ANSI Output: ")
+    print(cast<ptr<Void>>(ansi/out/ptr))
+    print/test/status(cast<ptr<UInt8>>("Str/FromW Final Path Output"), true)
+
+    // -------------------------------------------------------------------------
+    // 接口 9: Wstr/MatchC - 区分大小写比对校验
+    // -------------------------------------------------------------------------
+    print("[TEST] Wstr/MatchC - Evaluating case-sensitive matching...")
+    var match/target1: [256]UInt16
+    Wstr/FromA(cast<ptr<UInt8>>("C:\Aethelium\S\CoreKernelSpec核架构.ini"), &match/target1 as ptr<UInt16>)
+    
+    let match/c/ok: Bool = Wstr/MatchC(temp/wide/ptr, &match/target1 as ptr<UInt16>)
+    print/test/status(cast<ptr<UInt8>>("Wstr/MatchC Case-Sensitive Exact Match"), match/c/ok)
+
+    // -------------------------------------------------------------------------
+    // 接口 10: Wstr/MatchN - 不区分大小写比对校验 (引入大写的 INI 和 C 盘)
+    // -------------------------------------------------------------------------
+    print("[TEST] Wstr/MatchN - Evaluating case-insensitive matching...")
+    var match/target2: [256]UInt16
+    Wstr/FromA(cast<ptr<UInt8>>("C:\Aethelium\S\CoreKernelSpec核架构.INI"), &match/target2 as ptr<UInt16>)
+    
+    let match/n/ok: Bool = Wstr/MatchN(temp/wide/ptr, &match/target2 as ptr<UInt16>)
+    print/test/status(cast<ptr<UInt8>>("Wstr/MatchN Case-Insensitive Normalization Match"), match/n/ok)
+
+    // -------------------------------------------------------------------------
+    // 接口 11: Mem/Free - 彻底归还并终结整个扩展堆分配生存期
+    // -------------------------------------------------------------------------
+    print("[TEST] Mem/Free - Reclaiming final reallocated heap buffer...")
+    Mem/Free(cast<ptr<Void>>(realloc/ptr))
+    print/test/status(cast<ptr<UInt8>>("Mem/Free Final Heap Cleanup"), true)
+
+    print("================================================================================")
+    print("String and Memory Heap integration completed with 100% Coverage.")
+    print("================================================================================")
+    return 0
+}

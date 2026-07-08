@@ -1,0 +1,166 @@
+// -----------------------------------------------------------------------------
+// Core/IO/winSync - 内核级并发与线程同步原语
+// Architecture: Native NT Mutants & Events (Zero kernel32.dll wrappers)
+// -----------------------------------------------------------------------------
+
+@packed
+struct Core/IO/UnicodeString {
+    length: UInt16
+    maximum/length: UInt16
+    pad: UInt32
+    buffer: ptr<UInt16>
+}
+
+@packed
+struct Core/IO/ObjectAttributes {
+    length: UInt32
+    pad1: UInt32
+    root/directory: ptr<Void>
+    object/name: ptr<Core/IO/UnicodeString>
+    attributes: UInt32
+    pad2: UInt32
+    security/descriptor: ptr<Void>
+    security/quality/of/service: ptr<Void>
+}
+
+// 创建一个具名内核互斥体 (Mutant)，用于全局进程同步或关键区隔离
+func Sync/MutexC(name: ptr<UInt16>, initial: Bool) : UInt64 {
+    var handle: UInt64 = 0
+    var ustr: Core/IO/UnicodeString
+    var p/ustr: ptr<Core/IO/UnicodeString> = nil
+    
+    if name != nil {
+        var len: UInt64 = 0
+        while name[len] != 0 {
+            len = len + 1
+        }
+        let char/len: UInt16 = (len * 2) as UInt16
+        ustr\length = char/len
+        ustr\maximum/length = char/len
+        ustr\pad = 0
+        ustr\buffer = name
+        p/ustr = &ustr
+    }
+    
+    var obj/attrs: Core/IO/ObjectAttributes
+    obj/attrs\length = 48
+    obj/attrs\pad1 = 0
+    obj/attrs\root/directory = nil
+    obj/attrs\object/name = p/ustr
+    obj/attrs\attributes = 0x00000040 // OBJ_CASE_INSENSITIVE
+    obj/attrs\pad2 = 0
+    obj/attrs\security/descriptor = nil
+    obj/attrs\security/quality/of/service = nil
+    
+    var init/owner: UInt8 = 0
+    if initial {
+        init/owner = 1
+    }
+    
+    var status: UInt32 = 0
+    win {
+        // MUTANT_ALL_ACCESS = 0x001F0001
+        status = ntdll/NtCreateMutant(&handle, 0x001F0001, &obj/attrs, init/owner) as UInt32
+    }
+    if status != 0 {
+        return 0
+    }
+    return handle
+}
+
+// 主动释放在手内核互斥体的所有权
+func Sync/MutexR(handle: UInt64) : Bool {
+    if handle == 0 {
+        return false
+    }
+    var prev/count: Int32 = 0
+    var status: UInt32 = 0
+    win {
+        status = ntdll/NtReleaseMutant(handle, &prev/count) as UInt32
+    }
+    return status == 0
+}
+
+// 创建一个同步内核事件 (NotificationEvent 对应 manual reset, SynchronizationEvent 对应 auto reset)
+func Sync/EventC(name: ptr<UInt16>, manual: Bool) : UInt64 {
+    var handle: UInt64 = 0
+    var ustr: Core/IO/UnicodeString
+    var p/ustr: ptr<Core/IO/UnicodeString> = nil
+    
+    if name != nil {
+        var len: UInt64 = 0
+        while name[len] != 0 {
+            len = len + 1
+        }
+        let char/len: UInt16 = (len * 2) as UInt16
+        ustr\length = char/len
+        ustr\maximum/length = char/len
+        ustr\pad = 0
+        ustr\buffer = name
+        p/ustr = &ustr
+    }
+    
+    var obj/attrs: Core/IO/ObjectAttributes
+    obj/attrs\length = 48
+    obj/attrs\pad1 = 0
+    obj/attrs\root/directory = nil
+    obj/attrs\object/name = p/ustr
+    obj/attrs\attributes = 0x00000040 // OBJ_CASE_INSENSITIVE
+    obj/attrs\pad2 = 0
+    obj/attrs\security/descriptor = nil
+    obj/attrs\security/quality/of/service = nil
+    
+    var event/type: UInt32 = 1 // SynchronizationEvent (AutoReset)
+    if manual {
+        event/type = 0 // NotificationEvent (ManualReset)
+    }
+    
+    var status: UInt32 = 0
+    win {
+        // EVENT_ALL_ACCESS = 0x001F0003
+        status = ntdll/NtCreateEvent(&handle, 0x001F0003, &obj/attrs, event/type, 0) as UInt32
+    }
+    if status != 0 {
+        return 0
+    }
+    return handle
+}
+
+// 将内核事件对象激发，激活等待线程
+func Sync/EventS(handle: UInt64) : Bool {
+    if handle == 0 {
+        return false
+    }
+    var prev/state: Int32 = 0
+    var status: UInt32 = 0
+    win {
+        status = ntdll/NtSetEvent(handle, &prev/state) as UInt32
+    }
+    return status == 0
+}
+
+// 重置事件状态至非激发
+func Sync/EventS(handle: UInt64) : Bool {
+    if handle == 0 {
+        return false
+    }
+    var prev/state: Int32 = 0
+    var status: UInt32 = 0
+    win {
+        status = ntdll/NtSetEvent(handle, &prev/state) as UInt32
+    }
+    return status == 0
+}
+
+// 重置事件状态至非激发
+func Sync/EventR(handle: UInt64) : Bool {
+    if handle == 0 {
+        return false
+    }
+    var prev/state: Int32 = 0
+    var status: UInt32 = 0
+    win {
+        status = ntdll/NtResetEvent(handle, &prev/state) as UInt32
+    }
+    return status == 0
+}

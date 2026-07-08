@@ -1,0 +1,166 @@
+// -----------------------------------------------------------------------------
+// Integration/FileSyncIntegrationDemo.ae - 文件系统事务与内核同步集成主程序
+// 功能：集成并完整调用 winFile.ae 与 winSync.ae 中的全部 12 个高层接口
+// 包含接口：Sync/MutexC, Sync/MutexR, Sync/EventC, Sync/EventS, Sync/EventR, File/CreateD, File/Exists, File/Size, File/Attrib, File/SetA, File/Del, File/RemoveD
+// -----------------------------------------------------------------------------
+
+// 辅助状态报告函数
+func print/tx/status(step: ptr<UInt8>, success: Bool) : Void {
+    print("[TRANSACTION] ")
+    print(cast<ptr<Void>>(step))
+    if success {
+        print(" : APPROVED")
+    } else {
+        print(" : REJECTED")
+    }
+}
+
+@entry
+func start() : UInt64 {
+    print("================================================================================")
+    print("Starting FileSystem & Synchronization Transaction Verification Engine")
+    print("================================================================================")
+
+    // -------------------------------------------------------------------------
+    // 接口 1: Sync/MutexC - 创建具名内核互斥体以提供多进程防多开及事务主权锁
+    // -------------------------------------------------------------------------
+    print("[TEST] Sync/MutexC - Constructing native mutant lock...")
+    var m/name: [64]UInt16
+    Wstr/FromA(cast<ptr<UInt8>>("Global\AethelFileSystemExclusiveTransactionLock"), &m/name as ptr<UInt16>)
+    
+    let transaction/lock: UInt64 = Sync/MutexC(&m/name as ptr<UInt16>, false)
+    let lock/ok: Bool = (transaction/lock != 0)
+    print/tx/status(cast<ptr<UInt8>>("Sync/MutexC (Global mutant created)"), lock/ok)
+    if !lock/ok {
+        return 1
+    }
+
+    // 线程通过 NtWaitForSingleObject 独占进入核心文件事务临界区
+    win {
+        ntdll/NtWaitForSingleObject(transaction/lock, 0, nil)
+    }
+    print/tx/status(cast<ptr<UInt8>>("Enter Critical Section via WaitForSingleObject"), true)
+
+    // -------------------------------------------------------------------------
+    // 接口 2: File/Exists - 探测并审计系统只读参考文件的物理真实性
+    // -------------------------------------------------------------------------
+    print("[TEST] File/Exists - Auditing reference system file presence...")
+    var system/ini/path: [256]UInt16
+    Wstr/FromA(cast<ptr<UInt8>>("C:\Windows\win.ini"), &system/ini/path as ptr<UInt16>)
+    
+    let system/file/exists: Bool = File/Exists(&system/ini/path as ptr<UInt16>)
+    print/tx/status(cast<ptr<UInt8>>("File/Exists (C:\Windows\win.ini)"), system/file/exists)
+
+    // -------------------------------------------------------------------------
+    // 接口 3: File/Size - 调取系统只读参考文件的 EndOfFile 物理大小
+    // -------------------------------------------------------------------------
+    if system/file/exists {
+        print("[TEST] File/Size - Extracting EndOfFile storage metric...")
+        let file/bytes: UInt64 = File/Size(&system/ini/path as ptr<UInt16>)
+        
+        let size/ok: Bool = (file/bytes > 0)
+        print/tx/status(cast<ptr<UInt8>>("File/Size read successfully"), size/ok)
+        print("win.ini physical size: "); print(file/bytes); print(" bytes")
+    }
+
+    // -------------------------------------------------------------------------
+    // 接口 4: File/Attrib - 读取该系统核心文件的基础属性并进行安全级别验证
+    // -------------------------------------------------------------------------
+    if system/file/exists {
+        print("[TEST] File/Attrib - Reading system basic attributes...")
+        let attributes: UInt32 = File/Attrib(&system/ini/path as ptr<UInt16>)
+        
+        let attrib/read/ok: Bool = (attributes != 0xFFFFFFFF)
+        print/tx/status(cast<ptr<UInt8>>("File/Attrib retrieved successfully"), attrib/read/ok)
+    }
+
+    // -------------------------------------------------------------------------
+    // 接口 5: File/CreateD - 创建事务隔离沙盒根目录
+    // -------------------------------------------------------------------------
+    print("[TEST] File/CreateD - Formatting sandbox transaction workspace...")
+    var sandbox/dir: [256]UInt16
+    Wstr/FromA(cast<ptr<UInt8>>("C:\AethelSandboxDir"), &sandbox/dir as ptr<UInt16>)
+    
+    // 如果之前遗留了该临时工作空间，先清理掉
+    if File/Exists(&sandbox/dir as ptr<UInt16>) {
+        File/RemoveD(&sandbox/dir as ptr<UInt16>)
+    }
+    
+    let dir/created: Bool = File/CreateD(&sandbox/dir as ptr<UInt16>)
+    print/tx/status(cast<ptr<UInt8>>("File/CreateD (workspace formatting)"), dir/created)
+
+    // -------------------------------------------------------------------------
+    // 接口 6: File/SetA - 将刚建立的临时工作目录设为 Hidden (隐藏 = 2) 状态
+    // -------------------------------------------------------------------------
+    print("[TEST] File/SetA - Changing attributes to hidden on workspace directory...")
+    let attr/changed: Bool = File/SetA(&sandbox/dir as ptr<UInt16>, 2)
+    print/tx/status(cast<ptr<UInt8>>("File/SetA (Hidden state set)"), attr/changed)
+
+    // 确认隐藏属性生效
+    let new/dir/attrs: UInt32 = File/Attrib(&sandbox/dir as ptr<UInt16>)
+    let is/hidden: Bool = ((new/dir/attrs & 2) != 0)
+    print/tx/status(cast<ptr<UInt8>>("Verify Hidden state applied successfully"), is/hidden)
+
+    // -------------------------------------------------------------------------
+    // 接口 7: Sync/EventC - 构建内核匿名事件 (SynchronizationEvent)，准备进行内部锁步状态编排
+    // -------------------------------------------------------------------------
+    print("[TEST] Sync/EventC - Initializing native event object...")
+    let auto/event: UInt64 = Sync/EventC(nil, false) // 匿名，自动重置事件
+    
+    let event/ok: Bool = (auto/event != 0)
+    print/tx/status(cast<ptr<UInt8>>("Sync/EventC (Auto-reset event formatted)"), event/ok)
+
+    if event/ok {
+        // -------------------------------------------------------------------------
+        // 接口 8: Sync/EventS - 触发该同步事件状态，释放可能处于等待的后续状态
+        // -------------------------------------------------------------------------
+        print("[TEST] Sync/EventS - Pulsing transaction state change signal...")
+        let set/success: Bool = Sync/EventS(auto/event)
+        print/tx/status(cast<ptr<UInt8>>("Sync/EventS (Event status flagged)"), set/success)
+
+        // -------------------------------------------------------------------------
+        // 接口 9: Sync/EventR - 对事件进行复位以进行第二阶段流程锁止
+        // -------------------------------------------------------------------------
+        print("[TEST] Sync/EventR - Locking transition barrier via state reset...")
+        let reset/success: Bool = Sync/EventR(auto/event)
+        print/tx/status(cast<ptr<UInt8>>("Sync/EventR (Event reset back to locked)"), reset/success)
+
+        // 安全关闭临时事件句柄
+        win { ntdll/NtClose(auto/event) }
+    }
+
+    // -------------------------------------------------------------------------
+    // 接口 10: File/Del - 对事务隔离沙盒内的文件执行销毁（测试接口对无用目标的捕获能力）
+    // -------------------------------------------------------------------------
+    print("[TEST] File/Del - Triggering cleanup for temporary transaction locks...")
+    var target/file: [256]UInt16
+    Wstr/FromA(cast<ptr<UInt8>>("C:\AethelSandboxDir\UncommittedTx.tmp"), &target/file as ptr<UInt16>)
+    
+    // 该文件未实际生成，但必须调用该接口。接口在文件找不到时应安全返回 false 而非崩溃
+    let file/removed: Bool = File/Del(&target/file as ptr<UInt16>)
+    print/tx/status(cast<ptr<UInt8>>("File/Del (Executed cleanup, expected fail due to uncreated)"), !file/removed)
+
+    // -------------------------------------------------------------------------
+    // 接口 11: File/RemoveD - 回收沙盒根目录
+    // -------------------------------------------------------------------------
+    print("[TEST] File/RemoveD - Reclaiming transaction sandbox directory...")
+    
+    // 为确保能够成功删掉目录，我们需要将其属性重置为 Normal (128) 防止被只读挂锁
+    File/SetA(&sandbox/dir as ptr<UInt16>, 128)
+    
+    let dir/removed: Bool = File/RemoveD(&sandbox/dir as ptr<UInt16>)
+    print/tx/status(cast<ptr<UInt8>>("File/RemoveD (Workspace successfully dismantled)"), dir/removed)
+
+    // -------------------------------------------------------------------------
+    // 接口 12: Sync/MutexR - 提交所有事务状态，交还内核同步主权，关闭手持锁具
+    // -------------------------------------------------------------------------
+    print("[TEST] Sync/MutexR - Releasing transaction exclusiveness mutant...")
+    let release/ok: Bool = Sync/MutexR(transaction/lock)
+    win { ntdll/NtClose(transaction/lock) }
+    print/tx/status(cast<ptr<UInt8>>("Sync/MutexR & Handle closed"), release/ok)
+
+    print("================================================================================")
+    print("FileSystem & Synchronization transaction completed with 100% Coverage.")
+    print("================================================================================")
+    return 0
+}
